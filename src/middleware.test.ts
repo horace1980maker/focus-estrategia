@@ -30,6 +30,19 @@ test("protected routes redirect to localized login when unauthenticated", () => 
   );
 });
 
+test("login route responses are served with no-store headers", () => {
+  const request = new NextRequest("https://example.test/es/login");
+  const response = middleware(request);
+
+  assert.ok(response);
+  assert.equal(
+    response.headers.get("cache-control"),
+    "no-store, no-cache, must-revalidate, max-age=0",
+  );
+  assert.equal(response.headers.get("pragma"), "no-cache");
+  assert.equal(response.headers.get("expires"), "0");
+});
+
 test("mock fallback does not bypass login on non-local hosts", () => {
   const previous = process.env.AUTH_ALLOW_MOCK_FALLBACK;
   process.env.AUTH_ALLOW_MOCK_FALLBACK = "true";

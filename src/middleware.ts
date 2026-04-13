@@ -57,6 +57,10 @@ export function middleware(request: NextRequest) {
       return applyNoStoreHeaders(NextResponse.next());
     }
 
+    if (localePath === "/login") {
+      return applyNoStoreHeaders(NextResponse.next());
+    }
+
     return NextResponse.next();
   }
 
