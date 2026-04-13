@@ -170,3 +170,90 @@ test("invalid credentials trigger lockout after repeated failures", async () => 
     await cleanupOrganization(organization.id);
   }
 });
+
+test("facilitator reprovisioning updates existing org-admin credentials", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: {
+      id: `org-reprovision-${id}`,
+      name: `Reprovision Org ${id}`,
+      country: "Guatemala",
+    },
+  });
+
+  const facilitator = await prisma.user.create({
+    data: {
+      email: `fac-reprovision-${id}@internal.local`,
+      username: `fac-reprovision-${id}`,
+      name: "Facilitator Reprovision",
+      role: ROLES.FACILITATOR,
+      organizationId: null,
+    },
+  });
+
+  const facilitatorSession: UserSession = {
+    id: facilitator.id,
+    email: facilitator.email,
+    name: facilitator.name,
+    role: ROLES.FACILITATOR,
+    organizationId: null,
+  };
+
+  const username = `org-reprovision-${id}-admin`;
+
+  try {
+    const first = await provisionUserAccount({
+      actor: facilitatorSession,
+      username,
+      email: null,
+      name: "Org Admin Initial",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+      password: "FirstPass123!",
+      mustChangePassword: true,
+    });
+
+    await prisma.user.update({
+      where: { id: first.id },
+      data: {
+        failedLoginAttempts: 5,
+        lockedUntil: new Date(Date.now() + 10 * 60_000),
+      },
+    });
+
+    const reprovisioned = await provisionUserAccount({
+      actor: facilitatorSession,
+      username,
+      email: null,
+      name: "Org Admin Updated",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+      password: "SecondPass123!",
+      mustChangePassword: true,
+    });
+
+    assert.equal(reprovisioned.id, first.id);
+    assert.equal(reprovisioned.name, "Org Admin Updated");
+    assert.equal(reprovisioned.failedLoginAttempts, 0);
+    assert.equal(reprovisioned.lockedUntil, null);
+    assert.equal(reprovisioned.passwordVersion >= 2, true);
+
+    await assert.rejects(
+      () =>
+        authenticateWithCredentials({
+          username,
+          password: "FirstPass123!",
+        }),
+      /Invalid credentials/,
+    );
+
+    const login = await authenticateWithCredentials({
+      username,
+      password: "SecondPass123!",
+    });
+    assert.equal(login.user.id, first.id);
+  } finally {
+    await cleanupOrganization(organization.id);
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});

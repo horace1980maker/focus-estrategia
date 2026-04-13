@@ -446,26 +446,68 @@ export async function provisionUserAccount(input: {
     where: {
       OR: [{ email }, { username }],
     },
-    select: { id: true },
-  });
-  if (existing) {
-    throw new AuthServiceError("User already exists.", "USER_EXISTS", 409);
-  }
-
-  const user = await prisma.user.create({
-    data: {
-      email,
-      username,
-      name: input.name.trim(),
-      role,
-      organizationId,
-      passwordHash: hashPassword(input.password),
-      mustChangePassword: input.mustChangePassword ?? true,
-      passwordVersion: 1,
-      isActive: true,
-      provisionedById: input.actor.id,
+    select: {
+      id: true,
+      role: true,
+      organizationId: true,
+      username: true,
+      email: true,
     },
   });
+
+  let user;
+  let provisioningMode: "created" | "updated" = "created";
+  if (existing) {
+    if (existing.role !== role) {
+      throw new AuthServiceError(
+        "User already exists with a different role.",
+        "USER_EXISTS",
+        409,
+      );
+    }
+    if ((existing.organizationId ?? null) !== organizationId) {
+      throw new AuthServiceError(
+        "User already exists in a different organization scope.",
+        "USER_EXISTS",
+        409,
+      );
+    }
+
+    user = await prisma.user.update({
+      where: { id: existing.id },
+      data: {
+        email,
+        username,
+        name: input.name.trim(),
+        role,
+        organizationId,
+        passwordHash: hashPassword(input.password),
+        mustChangePassword: input.mustChangePassword ?? true,
+        passwordVersion: { increment: 1 },
+        isActive: true,
+        failedLoginAttempts: 0,
+        lastFailedLoginAt: null,
+        lockedUntil: null,
+        provisionedById: input.actor.id,
+      },
+    });
+    provisioningMode = "updated";
+  } else {
+    user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        name: input.name.trim(),
+        role,
+        organizationId,
+        passwordHash: hashPassword(input.password),
+        mustChangePassword: input.mustChangePassword ?? true,
+        passwordVersion: 1,
+        isActive: true,
+        provisionedById: input.actor.id,
+      },
+    });
+  }
 
   await writeAuditEvent({
     eventKey: "auth.user.provisioned",
@@ -480,6 +522,7 @@ export async function provisionUserAccount(input: {
       username,
       mustChangePassword: user.mustChangePassword,
       targetOrganizationId: organizationId,
+      provisioningMode,
     },
   });
 
