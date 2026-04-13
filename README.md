@@ -83,7 +83,7 @@ Recommended settings:
 1. Set app base directory to repository root (`.` or empty value).
 2. Use the provided root `Dockerfile` build.
 3. Configure a persistent volume mounted into `/app/data`.
-4. Set `DATABASE_URL=file:./data/prod.db`.
+4. Set `DATABASE_URL=file:/app/data/prod.db`.
 5. Set `AUTH_ALLOW_MOCK_FALLBACK=false`.
 6. Use `/api/health` as readiness/liveness probe.
 

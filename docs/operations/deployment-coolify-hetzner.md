@@ -20,7 +20,7 @@ Owner: Platform Operations
 4. Add environment variables from `.env.example`:
    - `NODE_ENV=production`
    - `PORT=3000`
-   - `DATABASE_URL=file:./data/prod.db`
+   - `DATABASE_URL=file:/app/data/prod.db`
    - `AUTH_ALLOW_MOCK_FALLBACK=false`
    - `AUTH_SESSION_TTL_HOURS=12`
    - `AUTH_MAX_FAILED_LOGIN_ATTEMPTS=5`
