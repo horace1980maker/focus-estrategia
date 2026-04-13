@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { syncDiagnosisToGoogleSheets } from "./google-sheets-sync";
 
 const ACTIVE_SURVEY_VERSION = "focused-diagnosis-v2-full-guide";
 
@@ -682,6 +683,122 @@ function summarizeInterpretation(scores: Record<string, number | null>): Interpr
   return { classification: "enabler", signals };
 }
 
+type PreparedDiagnosisAnswer = {
+  questionId: string;
+  numericValue: number | null;
+  optionValue: string | null;
+  textValue: string | null;
+  isNoInformation: boolean;
+};
+
+function parseMultiSelectTextValue(raw: string | null): string | null {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!isObject(parsed) || !Array.isArray(parsed.selectedOptions)) {
+      return raw;
+    }
+    const selected = parsed.selectedOptions
+      .filter((entry): entry is string => typeof entry === "string")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+    return selected.length > 0 ? selected.join(" | ") : null;
+  } catch {
+    return raw;
+  }
+}
+
+async function syncDiagnosisSubmissionToGoogleSheets(input: {
+  responseId: string;
+  organizationId: string;
+  submittedById: string | null;
+  submittedAt: Date;
+  definitionVersion: string;
+  preparedAnswers: PreparedDiagnosisAnswer[];
+  questions: QuestionDefinition[];
+}) {
+  const [organization, submittedBy] = await Promise.all([
+    prisma.organization.findUnique({
+      where: { id: input.organizationId },
+      select: { id: true, name: true },
+    }),
+    input.submittedById
+      ? prisma.user.findUnique({
+          where: { id: input.submittedById },
+          select: { id: true, name: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const questionById = new Map(input.questions.map((question) => [question.id, question]));
+  const answers: Record<string, string | number | boolean | null> = {};
+  const digitalScores: Record<string, number | null> = {
+    D1: null,
+    D2: null,
+    D3: null,
+    D4: null,
+    D5: null,
+    D6: null,
+  };
+
+  let keyBarrier: string | null = null;
+
+  for (const answer of input.preparedAnswers) {
+    const question = questionById.get(answer.questionId);
+    if (!question) {
+      continue;
+    }
+
+    let normalizedValue: string | number | boolean | null = null;
+    if (typeof answer.numericValue === "number") {
+      normalizedValue = answer.numericValue;
+    } else if (answer.optionValue) {
+      normalizedValue = answer.optionValue;
+    } else if (answer.textValue) {
+      normalizedValue =
+        question.questionType === "multi_select"
+          ? parseMultiSelectTextValue(answer.textValue)
+          : answer.textValue;
+    } else if (answer.isNoInformation) {
+      normalizedValue = "no_information";
+    }
+
+    answers[question.questionKey] = normalizedValue;
+
+    if (DIGITAL_QUESTION_KEYS.includes(question.questionKey as (typeof DIGITAL_QUESTION_KEYS)[number])) {
+      digitalScores[question.questionKey] = typeof normalizedValue === "number" ? normalizedValue : null;
+    }
+    if (question.questionKey === OPEN_QUESTION_KEY) {
+      keyBarrier = typeof normalizedValue === "string" ? normalizedValue : null;
+    }
+  }
+
+  const interpretation = summarizeInterpretation(digitalScores);
+  await syncDiagnosisToGoogleSheets({
+    event: "diagnosis_survey_submitted",
+    emittedAt: new Date().toISOString(),
+    responseId: input.responseId,
+    organization: {
+      id: input.organizationId,
+      name: organization?.name ?? input.organizationId,
+    },
+    submittedBy: {
+      id: submittedBy?.id ?? input.submittedById ?? null,
+      name: submittedBy?.name ?? null,
+    },
+    definitionVersion: input.definitionVersion,
+    submittedAt: input.submittedAt.toISOString(),
+    interpretation: {
+      classification: interpretation.classification,
+      keyBarrier,
+      digitalScores,
+    },
+    answers,
+  });
+}
+
 export async function submitDiagnosisSurveyResponse(input: {
   organizationId: string;
   submittedById?: string;
@@ -749,6 +866,20 @@ export async function submitDiagnosisSurveyResponse(input: {
 
     return created;
   });
+
+  try {
+    await syncDiagnosisSubmissionToGoogleSheets({
+      responseId: response.id,
+      organizationId: input.organizationId,
+      submittedById: input.submittedById ?? null,
+      submittedAt: response.submittedAt,
+      definitionVersion: definition.version,
+      preparedAnswers,
+      questions,
+    });
+  } catch (error) {
+    console.error("Failed to sync diagnosis response to Google Sheets.", error);
+  }
 
   return {
     responseId: response.id,

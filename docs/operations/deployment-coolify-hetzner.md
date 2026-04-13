@@ -13,7 +13,7 @@ Owner: Platform Operations
 
 ## 2. Create app in Coolify
 
-1. Connect repository and set **Base Directory** to `app/`.
+1. Connect repository and set **Base Directory** to repository root (`.` or empty value).
 2. Select Dockerfile deployment.
 3. Ensure persistent volume mapping:
    - Container path: `/app/data`
@@ -35,7 +35,7 @@ Owner: Platform Operations
 
 ## 4. Release process
 
-1. Build image from `app/Dockerfile`.
+1. Build image from root `Dockerfile`.
 2. Deploy release.
 3. Startup command runs:
    - `npx prisma migrate deploy`
