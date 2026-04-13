@@ -37,6 +37,18 @@ test("role dashboard contract exposes expected analytics scope", () => {
     getRoleViewContract(ROLES.FOCUS_COORDINATOR).analyticsContract,
     DASHBOARD_ANALYTICS_CONTRACTS.OFFICIAL_OVERSIGHT,
   );
+  assert.equal(
+    getRoleViewContract(ROLES.FACILITATOR).canAdministerOrganizations,
+    true,
+  );
+  assert.equal(
+    getRoleViewContract(ROLES.NGO_ADMIN).canAdministerOrganizations,
+    false,
+  );
+  assert.equal(
+    getRoleViewContract(ROLES.FOCUS_COORDINATOR).canAdministerOrganizations,
+    false,
+  );
 });
 
 test("requested contract parsing accepts known contracts only", () => {

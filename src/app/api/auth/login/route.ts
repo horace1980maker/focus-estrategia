@@ -11,6 +11,12 @@ type LoginPayload = {
   password?: string;
 };
 
+const NO_STORE_HEADERS = {
+  "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+  pragma: "no-cache",
+  expires: "0",
+} as const;
+
 function getRequestIp(request: NextRequest): string | null {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) {
@@ -51,16 +57,21 @@ export async function POST(request: NextRequest) {
       expires: result.authSession.expiresAt,
     });
 
-    return NextResponse.json({
-      user: {
-        id: result.user.id,
-        name: result.user.name,
-        username: result.user.username,
-        role: result.user.role,
-        organizationId: result.user.organizationId,
-        mustChangePassword: result.user.mustChangePassword,
+    return NextResponse.json(
+      {
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          username: result.user.username,
+          role: result.user.role,
+          organizationId: result.user.organizationId,
+          mustChangePassword: result.user.mustChangePassword,
+        },
       },
-    });
+      {
+        headers: NO_STORE_HEADERS,
+      },
+    );
   } catch (error) {
     if (error instanceof AuthServiceError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });

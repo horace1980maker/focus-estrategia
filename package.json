@@ -9,7 +9,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "start:prod": "npm run migrate:deploy && npm run start",
     "lint": "eslint",
-    "test": "tsx --test src/lib/analytics.test.ts src/lib/phases.test.ts src/lib/diagnosis-survey.test.ts src/lib/deliverables.test.ts src/lib/phase-workspace-copy.test.ts src/lib/phase-workspace-routing.test.ts src/lib/phase-workspace-page-state.test.ts src/lib/auth-service.test.ts src/lib/hardening-fixtures.test.ts src/lib/audit.test.ts src/lib/role-dashboard-contracts.test.ts src/lib/auth-routing.test.ts src/lib/role-navigation.test.ts src/lib/draft-readiness.test.ts src/lib/validation-access.test.ts src/lib/validation-mutations.test.ts src/lib/validation-copy-contracts.test.ts src/lib/validation-workspace-contracts.test.ts",
+    "test": "tsx --test src/lib/analytics.test.ts src/lib/phases.test.ts src/lib/diagnosis-survey.test.ts src/lib/deliverables.test.ts src/lib/phase-workspace-copy.test.ts src/lib/phase-workspace-routing.test.ts src/lib/phase-workspace-page-state.test.ts src/lib/auth-service.test.ts src/lib/hardening-fixtures.test.ts src/lib/audit.test.ts src/lib/role-dashboard-contracts.test.ts src/lib/auth-routing.test.ts src/lib/role-navigation.test.ts src/lib/draft-readiness.test.ts src/lib/validation-access.test.ts src/lib/validation-mutations.test.ts src/lib/validation-copy-contracts.test.ts src/lib/validation-workspace-contracts.test.ts src/lib/organization-admin-service.test.ts src/lib/login-copy-contracts.test.ts src/middleware.test.ts",
     "seed:hardening": "tsx scripts/seed-hardening-fixtures.ts",
     "provision:login": "node scripts/provision-login-users.js",
     "provision:orgs": "node scripts/provision-org-credentials.js"

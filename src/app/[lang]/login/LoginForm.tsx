@@ -1,16 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { loginAction } from "./actions";
 
 type LoginFormProps = {
   lang: "es" | "en";
   nextPath?: string | null;
+  homeLinkLabel: string;
 };
 
 const INITIAL_STATE = { error: null as string | null };
 
-export function LoginForm({ lang, nextPath = null }: LoginFormProps) {
+export function LoginForm({ lang, nextPath = null, homeLinkLabel }: LoginFormProps) {
   const [state, formAction, isPending] = useActionState(loginAction, INITIAL_STATE);
 
   return (
@@ -29,6 +31,9 @@ export function LoginForm({ lang, nextPath = null }: LoginFormProps) {
             ? "Ingresaras con credenciales provisionadas para organizacion, facilitacion u oficiales."
             : "Sign in with provisioned credentials for organization, facilitator, or officials workspaces."}
         </p>
+        <Link href={`/${lang}`} className="login-aside-home-link">
+          {homeLinkLabel}
+        </Link>
       </article>
 
       <form action={formAction} className="card login-card">

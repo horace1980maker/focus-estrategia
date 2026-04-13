@@ -11,14 +11,19 @@ export default async function LoginPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { lang } = await params;
+  const locale = lang === "en" ? "en" : "es";
   const query = searchParams ? await searchParams : {};
   const rawNext = typeof query.next === "string" ? query.next : null;
   const nextPath = rawNext?.startsWith("/") ? rawNext : null;
-  await getDictionary(lang as Locale);
+  const dict = await getDictionary(locale as Locale);
 
   return (
     <main className="main-content">
-      <LoginForm lang={(lang === "en" ? "en" : "es")} nextPath={nextPath} />
+      <LoginForm
+        lang={locale}
+        nextPath={nextPath}
+        homeLinkLabel={dict.login.home_link}
+      />
     </main>
   );
 }

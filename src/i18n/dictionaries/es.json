@@ -73,6 +73,9 @@
     "what_to_do_now": "Que hacer ahora",
     "recent_deliverables": "Entregables Recientes"
   },
+  "login": {
+    "home_link": "Volver al inicio"
+  },
   "cohort": {
     "title": "Panel de Cohorte",
     "subtitle": "Vista agregada de engagement, tareas completadas, readiness y ROI por organizacion.",

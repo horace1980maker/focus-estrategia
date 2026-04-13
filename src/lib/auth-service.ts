@@ -479,6 +479,7 @@ export async function provisionUserAccount(input: {
       role,
       username,
       mustChangePassword: user.mustChangePassword,
+      targetOrganizationId: organizationId,
     },
   });
 

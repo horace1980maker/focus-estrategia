@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { locales, defaultLocale, isValidLocale } from "@/i18n/config";
 
+const NO_STORE_HEADERS = {
+  "cache-control": "no-store, no-cache, must-revalidate, max-age=0",
+  pragma: "no-cache",
+  expires: "0",
+} as const;
+
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function applyNoStoreHeaders(response: NextResponse) {
+  for (const [header, value] of Object.entries(NO_STORE_HEADERS)) {
+    response.headers.set(header, value);
+  }
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -28,14 +43,18 @@ export function middleware(request: NextRequest) {
 
     if (!publicLocalePaths.has(localePath) && isProtectedPath) {
       const allowMockFallback =
-        process.env.AUTH_ALLOW_MOCK_FALLBACK === "true" && process.env.NODE_ENV !== "production";
+        process.env.AUTH_ALLOW_MOCK_FALLBACK === "true" &&
+        process.env.NODE_ENV !== "production" &&
+        LOCAL_HOSTNAMES.has(request.nextUrl.hostname.toLowerCase());
       const hasSessionCookie = request.cookies.has("saw_session");
       if (!hasSessionCookie && !allowMockFallback) {
         const url = request.nextUrl.clone();
         url.pathname = `/${maybeLocale}/login`;
         url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-        return NextResponse.redirect(url);
+        return applyNoStoreHeaders(NextResponse.redirect(url));
       }
+
+      return applyNoStoreHeaders(NextResponse.next());
     }
 
     return NextResponse.next();

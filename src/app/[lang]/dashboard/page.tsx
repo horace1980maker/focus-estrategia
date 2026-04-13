@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronRightIcon, FileIcon, SparkleIcon } from "@/components/icons";
+import { FacilitatorAdminPanel } from "@/components/FacilitatorAdminPanel";
 import { TelemetryTracker } from "@/components/TelemetryTracker";
 import type { Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
@@ -79,7 +80,7 @@ export default async function DashboardPage({
   const isOrgDashboard = session.role === ROLES.NGO_ADMIN;
   const showPendingQueue = getQueryValue(query.queue) === "pending";
 
-  const [organization, phaseStatus] = await Promise.all([
+  const [organization, phaseStatus, facilitatorAdminOrganizations] = await Promise.all([
     session.organizationId
       ? prisma.organization.findUnique({
           where: { id: session.organizationId },
@@ -87,6 +88,12 @@ export default async function DashboardPage({
         })
       : null,
     session.organizationId ? getPhaseStatus(session.organizationId) : null,
+    roleContract.canAdministerOrganizations
+      ? prisma.organization.findMany({
+          orderBy: [{ name: "asc" }, { id: "asc" }],
+          select: { id: true, name: true },
+        })
+      : Promise.resolve([] as Array<{ id: string; name: string }>),
   ]);
 
   let metricsError: string | null = null;
@@ -364,6 +371,13 @@ export default async function DashboardPage({
             </p>
           )}
         </section>
+      ) : null}
+
+      {roleContract.canAdministerOrganizations ? (
+        <FacilitatorAdminPanel
+          lang={lang === "es" ? "es" : "en"}
+          organizations={facilitatorAdminOrganizations}
+        />
       ) : null}
 
       <div className="dashboard-grid">

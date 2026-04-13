@@ -73,6 +73,9 @@
     "what_to_do_now": "What to Do Now",
     "recent_deliverables": "Recent Deliverables"
   },
+  "login": {
+    "home_link": "Back to home"
+  },
   "cohort": {
     "title": "Cohort Dashboard",
     "subtitle": "Aggregate view of engagement, completed tasks, readiness, and ROI by organization.",

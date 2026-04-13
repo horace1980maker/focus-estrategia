@@ -40,11 +40,30 @@ const MOCK_USERS: Record<string, MockSessionSeed> = {
 
 const ACTIVE_MOCK_USER = process.env.MOCK_USER ?? "ngo-admin";
 const MOCK_FALLBACK_REQUESTED = process.env.AUTH_ALLOW_MOCK_FALLBACK === "true";
+const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function isLocalHostUrl(rawUrl: string | undefined): boolean {
+  if (!rawUrl) {
+    return false;
+  }
+  try {
+    return LOCAL_HOSTNAMES.has(new URL(rawUrl).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? process.env.AUTH_APP_URL ?? "";
+const APP_URL_IS_LOCALHOST = isLocalHostUrl(appUrl);
+
 if (process.env.NODE_ENV === "production" && MOCK_FALLBACK_REQUESTED) {
   throw new Error("AUTH_ALLOW_MOCK_FALLBACK must be false in production.");
 }
 const ALLOW_MOCK_FALLBACK =
-  MOCK_FALLBACK_REQUESTED && process.env.NODE_ENV !== "production";
+  MOCK_FALLBACK_REQUESTED &&
+  process.env.NODE_ENV !== "production" &&
+  APP_URL_IS_LOCALHOST;
 const AUTH_REQUIRED_MESSAGE = "Authentication required.";
 
 async function ensureMockOrganization(preferredOrganizationId: string): Promise<string> {

@@ -27,6 +27,7 @@ export type RoleViewContract = {
   analyticsContract: DashboardAnalyticsContract;
   canOpenCohort: boolean;
   canReviewQueue: boolean;
+  canAdministerOrganizations: boolean;
 };
 
 const ROLE_VIEW_CONTRACTS: Record<Role, RoleViewContract> = {
@@ -38,6 +39,7 @@ const ROLE_VIEW_CONTRACTS: Record<Role, RoleViewContract> = {
     analyticsContract: DASHBOARD_ANALYTICS_CONTRACTS.NGO_EXECUTION,
     canOpenCohort: false,
     canReviewQueue: false,
+    canAdministerOrganizations: false,
   },
   [ROLES.FACILITATOR]: {
     role: ROLES.FACILITATOR,
@@ -47,6 +49,7 @@ const ROLE_VIEW_CONTRACTS: Record<Role, RoleViewContract> = {
     analyticsContract: DASHBOARD_ANALYTICS_CONTRACTS.FACILITATOR_REVIEW,
     canOpenCohort: false,
     canReviewQueue: true,
+    canAdministerOrganizations: true,
   },
   [ROLES.FOCUS_COORDINATOR]: {
     role: ROLES.FOCUS_COORDINATOR,
@@ -56,6 +59,7 @@ const ROLE_VIEW_CONTRACTS: Record<Role, RoleViewContract> = {
     analyticsContract: DASHBOARD_ANALYTICS_CONTRACTS.OFFICIAL_OVERSIGHT,
     canOpenCohort: true,
     canReviewQueue: false,
+    canAdministerOrganizations: false,
   },
 };
 
