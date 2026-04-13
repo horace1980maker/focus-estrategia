@@ -3,7 +3,41 @@ const path = require("node:path");
 const { randomBytes, randomUUID, scryptSync } = require("node:crypto");
 const Database = require("better-sqlite3");
 
-const DB_PATH = path.resolve(__dirname, "..", "prisma", "dev.db");
+function resolveSqliteDbPath() {
+  const configuredUrl = process.env.DATABASE_URL?.trim();
+  if (!configuredUrl) {
+    return path.resolve(__dirname, "..", "prisma", "dev.db");
+  }
+
+  if (!configuredUrl.startsWith("file:")) {
+    throw new Error("DATABASE_URL must use sqlite file syntax (for example file:./data/prod.db).");
+  }
+
+  let filePath = configuredUrl.slice("file:".length);
+  if (!filePath) {
+    throw new Error("DATABASE_URL file path is empty.");
+  }
+
+  if (filePath.startsWith("//")) {
+    try {
+      filePath = new URL(configuredUrl).pathname;
+    } catch {
+      // Keep original path if URL parsing fails.
+    }
+  }
+
+  if (/^\/[A-Za-z]:\//.test(filePath)) {
+    filePath = filePath.slice(1);
+  }
+
+  if (!path.isAbsolute(filePath)) {
+    filePath = path.resolve(process.cwd(), filePath);
+  }
+
+  return filePath;
+}
+
+const DB_PATH = resolveSqliteDbPath();
 const CSV_PATH = path.resolve(__dirname, "..", "..", "organizaciones.csv");
 const DEFAULT_PASSWORD = process.env.ORG_DEFAULT_PASSWORD ?? "DemoPass2026!";
 const PHASE_KEYS = [
@@ -232,6 +266,7 @@ function run() {
   console.log(
     JSON.stringify(
       {
+        databasePath: DB_PATH,
         organizationsProvisioned: accounts.length,
         defaultPassword: DEFAULT_PASSWORD,
         accounts,

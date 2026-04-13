@@ -13,7 +13,11 @@ type OrganizationFixture = {
 };
 
 const DEFAULT_PASSWORD = "TempPass123!";
-const CSV_PATH = path.resolve(process.cwd(), "..", "organizaciones.csv");
+const CSV_CANDIDATE_PATHS = [
+  process.env.HARDENING_ORGS_CSV,
+  path.resolve(process.cwd(), "organizaciones.csv"),
+  path.resolve(process.cwd(), "..", "organizaciones.csv"),
+].filter((candidate): candidate is string => Boolean(candidate && candidate.trim().length > 0));
 
 function toStableOrgId(index: number): string {
   return `org-hardening-${String(index).padStart(2, "0")}`;
@@ -47,9 +51,16 @@ function parseCsvRows(content: string): Array<{ name: string; country: string }>
 
 export async function loadHardeningOrganizationFixtures(): Promise<OrganizationFixture[]> {
   let csvContent = "";
-  try {
-    csvContent = await fs.readFile(CSV_PATH, "utf-8");
-  } catch {
+  for (const csvPath of CSV_CANDIDATE_PATHS) {
+    try {
+      csvContent = await fs.readFile(csvPath, "utf-8");
+      break;
+    } catch {
+      // Continue trying the next candidate path.
+    }
+  }
+
+  if (!csvContent) {
     return [];
   }
 

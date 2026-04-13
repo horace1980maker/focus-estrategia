@@ -91,7 +91,7 @@ export default async function LandingPage({
         <div className="hero-inner">
           <div className="hero-badge">
             <SparkleIcon size={16} />
-            {lang === "es" ? "Coach, no curso" : "Coach, not course"}
+            {lang === "es" ? "Acompañamiento, no curso" : "Accompaniment, not course"}
           </div>
           <h1>{dict.landing.hero_title}</h1>
           <p className="hero-subtitle">{dict.landing.hero_subtitle}</p>

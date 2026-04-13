@@ -40,7 +40,11 @@ Owner: Platform Operations
 3. Startup command runs:
    - `npx prisma migrate deploy`
    - `npm run start`
-4. Validate:
+4. Provision login credentials after first deploy or any fresh DB:
+   - `npm run seed:hardening`
+   - Optional bootstrap users: `npm run provision:login`
+   - Both commands read `DATABASE_URL`.
+5. Validate:
    - Login page loads.
    - NGO user login works.
    - Facilitator dashboard loads.

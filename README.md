@@ -86,6 +86,15 @@ Recommended settings:
 4. Set `DATABASE_URL=file:/app/data/prod.db`.
 5. Set `AUTH_ALLOW_MOCK_FALLBACK=false`.
 6. Use `/api/health` as readiness/liveness probe.
+7. After first deploy (or any fresh DB), provision credential users:
+
+```bash
+npm run seed:hardening
+# optional bootstrap accounts:
+# npm run provision:login
+```
+
+Both provisioning commands respect `DATABASE_URL`.
 
 Production startup command is handled by the Docker image and runs:
 
