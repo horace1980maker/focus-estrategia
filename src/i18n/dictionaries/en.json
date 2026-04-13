@@ -5,24 +5,24 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "phase1": "Kickoff & Alignment",
-    "phase2": "Focused Diagnosis",
-    "phase3": "Strategic Framework",
-    "phase4": "Draft Development",
-    "phase5": "Validation",
-    "phase6": "Deliverables",
+    "phase1": "Phase 1: Kickoff & Alignment",
+    "phase2": "Phase 2: Focused Diagnosis",
+    "phase3": "Phase 3: Strategic Framework",
+    "phase4": "Phase 4: Draft Development",
+    "phase5": "Phase 5: Validation",
+    "phase6": "Phase 6: Deliverables",
     "deliverables": "Deliverables",
     "cohort": "Cohort Dashboard",
     "examples": "Example Library",
     "settings": "Settings"
   },
   "phases": {
-    "phase1": "Kickoff & Alignment",
-    "phase2": "Focused Diagnosis",
-    "phase3": "Strategic Framework",
-    "phase4": "Draft Development",
-    "phase5": "Validation",
-    "phase6": "Deliverables"
+    "phase1": "Phase 1: Kickoff & Alignment",
+    "phase2": "Phase 2: Focused Diagnosis",
+    "phase3": "Phase 3: Strategic Framework",
+    "phase4": "Phase 4: Draft Development",
+    "phase5": "Phase 5: Validation",
+    "phase6": "Phase 6: Deliverables"
   },
   "outputs": {
     "organization-profile": "Organization Profile",

@@ -5,24 +5,24 @@
   },
   "nav": {
     "dashboard": "Panel Principal",
-    "phase1": "Arranque y Alineacion",
-    "phase2": "Diagnostico Focalizado",
-    "phase3": "Marco Estrategico",
-    "phase4": "Desarrollo del Borrador",
-    "phase5": "Validacion",
-    "phase6": "Entregables",
+    "phase1": "Fase 1: Arranque y Alineacion",
+    "phase2": "Fase 2: Diagnostico Focalizado",
+    "phase3": "Fase 3: Marco Estrategico",
+    "phase4": "Fase 4: Desarrollo del Borrador",
+    "phase5": "Fase 5: Validacion",
+    "phase6": "Fase 6: Entregables",
     "deliverables": "Entregables",
     "cohort": "Panel de Cohorte",
     "examples": "Biblioteca de Ejemplos",
     "settings": "Configuracion"
   },
   "phases": {
-    "phase1": "Arranque y Alineacion",
-    "phase2": "Diagnostico Focalizado",
-    "phase3": "Marco Estrategico",
-    "phase4": "Desarrollo del Borrador",
-    "phase5": "Validacion",
-    "phase6": "Entregables"
+    "phase1": "Fase 1: Arranque y Alineacion",
+    "phase2": "Fase 2: Diagnostico Focalizado",
+    "phase3": "Fase 3: Marco Estrategico",
+    "phase4": "Fase 4: Desarrollo del Borrador",
+    "phase5": "Fase 5: Validacion",
+    "phase6": "Fase 6: Entregables"
   },
   "outputs": {
     "organization-profile": "Perfil de Organizacion",
