@@ -16,6 +16,7 @@ RUN npx prisma generate && npm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -33,4 +34,4 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 RUN mkdir -p /app/data
 EXPOSE 3000
 
-CMD ["sh", "-c", "mkdir -p /app/data && npx prisma migrate deploy && npm run start"]
+CMD ["sh", "-c", "mkdir -p /app/data && npx prisma migrate deploy && npx next start -H 0.0.0.0 -p ${PORT:-3000}"]
