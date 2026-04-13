@@ -45,14 +45,11 @@ function hashPassword(password) {
   return `v1:${salt}:${hash}`;
 }
 
-function requireOrganizationId(db) {
+function getFirstOrganizationId(db) {
   const org = db
     .prepare('SELECT id, name FROM "Organization" ORDER BY createdAt ASC LIMIT 1')
     .get();
-  if (!org?.id) {
-    throw new Error("No organizations found. Create at least one organization first.");
-  }
-  return org.id;
+  return org?.id ?? null;
 }
 
 function findUserByRole(db, role) {
@@ -135,22 +132,15 @@ function upsertLoginUser(db, input) {
 
 function main() {
   const db = new Database(DB_PATH);
-  const organizationId = requireOrganizationId(db);
+  const organizationId = getFirstOrganizationId(db);
 
   const results = [
-    upsertLoginUser(db, {
-      role: "ngo_admin",
-      username: "ngo-admin",
-      name: "NGO Admin",
-      email: "ngo-admin",
-      organizationId,
-    }),
     upsertLoginUser(db, {
       role: "facilitator",
       username: "facilitator",
       name: "Facilitator",
       email: "facilitator",
-      organizationId,
+      organizationId: null,
     }),
     upsertLoginUser(db, {
       role: "focus_coordinator",
@@ -161,9 +151,23 @@ function main() {
     }),
   ];
 
+  if (organizationId) {
+    results.unshift(
+      upsertLoginUser(db, {
+        role: "ngo_admin",
+        username: "ngo-admin",
+        name: "NGO Admin",
+        email: "ngo-admin",
+        organizationId,
+      }),
+    );
+  }
+
   console.log(JSON.stringify({
     databasePath: DB_PATH,
     password: DEFAULT_PASSWORD,
+    organizationFoundForNgoAdmin: Boolean(organizationId),
+    ngoAdminOrganizationId: organizationId,
     accounts: results,
   }, null, 2));
 }
