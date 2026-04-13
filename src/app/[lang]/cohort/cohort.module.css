@@ -1,0 +1,224 @@
+/* ─── Cohort Dashboard ─── */
+.welcomeHeader {
+  margin-bottom: var(--space-2xl);
+}
+
+.orgName {
+  font-family: var(--font-display);
+  font-size: var(--headline-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  margin-bottom: var(--space-xs);
+}
+
+.welcomeText {
+  font-size: var(--body-lg);
+  color: var(--on-surface-variant);
+  max-width: 600px;
+}
+
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.metricCard {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: box-shadow var(--transition-normal);
+}
+
+.metricCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.metricLabel {
+  font-size: var(--label-lg);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+
+.metricValue {
+  font-family: var(--font-display);
+  font-size: var(--headline-md);
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.metricSub {
+  font-size: var(--body-sm);
+  color: var(--on-surface-variant);
+  margin-top: var(--space-xs);
+}
+
+.progressTrack {
+  width: 100%;
+  background: var(--surface-variant);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+}
+
+.cohortTableContainer {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.cohortTableHeader {
+  margin-bottom: var(--space-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cohortTableHeader h3 {
+  font-family: var(--font-headline);
+  font-size: var(--title-lg);
+  color: var(--on-surface);
+}
+
+.cohortTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cohortTable th {
+  text-align: left;
+  padding: var(--space-md) var(--space-sm);
+  font-size: var(--label-md);
+  color: var(--outline);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.cohortTable td {
+  padding: var(--space-lg) var(--space-sm);
+  border-bottom: 1px solid rgba(204, 200, 193, 0.15);
+  vertical-align: middle;
+}
+
+.cohortTable tr:last-child td {
+  border-bottom: none;
+}
+
+.orgNameCell {
+  font-size: var(--body-lg);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.phaseBadge {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-full);
+  font-size: var(--label-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phaseBadgeActive {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.tableProgress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.tableProgressText {
+  font-size: var(--body-sm);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  min-width: 40px;
+}
+
+.statusBadge {
+  font-size: var(--label-md);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.statusBadge::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.statusBadgeOk {
+  color: var(--secondary);
+}
+.statusBadgeOk::before {
+  background: var(--secondary);
+}
+
+.statusBadgeAlert {
+  color: var(--error);
+}
+.statusBadgeAlert::before {
+  background: var(--error);
+}
+
+.btnTable {
+  font-size: var(--body-sm);
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.btnTable:hover {
+  background: var(--surface-container);
+}
+
+/* Phase Dist Mini Chart */
+.phaseDistRow {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.phaseDistItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.phaseDistLabel {
+  font-size: 10px;
+  color: var(--outline);
+  font-weight: 700;
+}
+
+.phaseDistCount {
+  font-size: var(--body-md);
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-container);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}

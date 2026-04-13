@@ -1,0 +1,299 @@
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-xl);
+}
+
+/* ─── Welcome Header ─── */
+.welcome-header {
+  margin-bottom: var(--space-2xl);
+}
+
+.welcome-header .org-name {
+  font-family: var(--font-display);
+  font-size: var(--headline-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  margin-bottom: var(--space-xs);
+}
+
+.welcome-header .welcome-text {
+  font-size: var(--body-lg);
+  color: var(--on-surface-variant);
+}
+
+/* ─── Phase Banner ─── */
+.phase-banner {
+  background: linear-gradient(135deg, var(--primary), var(--primary-container));
+  color: var(--on-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-2xl);
+  margin-bottom: var(--space-xl);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.phase-banner-info h2 {
+  font-size: var(--headline-sm);
+  color: var(--on-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.phase-banner-info p {
+  color: var(--on-primary-container);
+  font-size: var(--body-md);
+  opacity: 0.85;
+}
+
+.phase-banner .phase-tag {
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--label-lg);
+  white-space: nowrap;
+}
+
+.facilitator-queue {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.facilitator-queue.highlighted {
+  border-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.facilitator-queue h3 {
+  margin: 0;
+  font-size: var(--title-lg);
+}
+
+.facilitator-queue p {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.facilitator-queue-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.facilitator-queue-links .sidebar-link {
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  width: fit-content;
+  padding-right: var(--space-sm);
+}
+
+/* ─── Metric Cards ─── */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.metric-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  transition: box-shadow var(--transition-normal);
+}
+
+.metric-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.metric-label {
+  font-size: var(--label-lg);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+
+.metric-value {
+  font-family: var(--font-display);
+  font-size: var(--headline-md);
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.metric-sub {
+  font-size: var(--body-sm);
+  color: var(--outline);
+  margin-top: var(--space-xs);
+}
+
+/* ─── Task List ─── */
+.task-list {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-xl);
+}
+
+.task-list h3 {
+  font-size: var(--title-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+}
+
+.task-item + .task-item {
+  border-top: 1px solid rgba(204, 200, 193, 0.15);
+}
+
+.task-check {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--outline-variant);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: transparent;
+}
+
+.task-check.done {
+  background: var(--secondary);
+  border-color: var(--secondary);
+}
+
+.task-text {
+  font-size: var(--body-md);
+  color: var(--on-surface);
+  flex: 1;
+}
+
+.task-text.done {
+  text-decoration: line-through;
+  color: var(--outline);
+}
+
+.task-due {
+  font-size: var(--label-lg);
+  color: var(--outline);
+  white-space: nowrap;
+}
+
+/* ─── Right Column: Coach + Scorecard ─── */
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+/* ─── Scorecard Overrides ─── */
+.scorecard-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+}
+
+.scorecard-row + .scorecard-row {
+  border-top: 1px solid rgba(204, 200, 193, 0.15);
+}
+
+.scorecard-status {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.scorecard-status.complete { background: #2a7d4f; }
+.scorecard-status.partial  { background: var(--tertiary); }
+.scorecard-status.missing  { background: var(--error); }
+
+.scorecard-label {
+  flex: 1;
+  font-size: var(--body-sm);
+  color: var(--on-surface);
+}
+
+.scorecard-value {
+  font-size: var(--label-lg);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+/* ─── Facilitator Note ─── */
+.facilitator-note {
+  background: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.facilitator-note-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.facilitator-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background: var(--secondary);
+  color: var(--on-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--label-lg);
+}
+
+.facilitator-name {
+  font-weight: 600;
+  font-size: var(--body-sm);
+  color: var(--primary);
+}
+
+.facilitator-date {
+  font-size: var(--label-md);
+  color: var(--outline);
+  margin-left: auto;
+}
+
+.facilitator-note p {
+  font-size: var(--body-sm);
+  line-height: 1.6;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics-row {
+    grid-template-columns: 1fr;
+  }
+}

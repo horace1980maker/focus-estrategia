@@ -1,0 +1,130 @@
+.examples-header {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.examples-header h1 {
+  margin: 0;
+}
+
+.examples-header p {
+  margin: 0;
+  color: #4a5066;
+}
+
+.examples-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.examples-filter-pill {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  text-decoration: none;
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.examples-filter-pill.active {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.examples-empty-note {
+  margin: 0 0 0.9rem;
+  font-size: 0.84rem;
+  color: #475569;
+}
+
+.examples-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.example-card {
+  border: 1px solid #dbe3ea;
+  border-radius: 0.8rem;
+  background: #ffffff;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.example-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.example-card p {
+  margin: 0.25rem 0 0;
+  color: #4a5066;
+  font-size: 0.87rem;
+}
+
+.example-phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.example-phase-chip {
+  border: 1px solid #d8e4e8;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  background: #f8fafc;
+}
+
+.example-preview {
+  margin: 0;
+  padding: 0.7rem;
+  border-radius: 0.65rem;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.example-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.example-apply-button,
+.example-link {
+  border: 1px solid #94a3b8;
+  border-radius: 0.55rem;
+  padding: 0.38rem 0.65rem;
+  text-decoration: none;
+  color: #0f172a;
+  background: #f8fafc;
+  font-size: 0.82rem;
+}
+
+.example-apply-button {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.example-apply-disabled {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.55rem;
+  padding: 0.38rem 0.65rem;
+  color: #64748b;
+  background: #f8fafc;
+  font-size: 0.8rem;
+}

@@ -1,0 +1,93 @@
+.login-shell {
+  width: min(980px, 100%);
+  margin: var(--space-2xl) auto;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: var(--space-xl);
+  align-items: stretch;
+}
+
+.login-aside {
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 40%, transparent);
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--secondary-container) 62%, white) 0%, transparent 48%),
+    radial-gradient(circle at 78% 80%, color-mix(in srgb, var(--primary-container) 60%, white) 0%, transparent 52%),
+    linear-gradient(140deg, color-mix(in srgb, var(--surface-container-low) 88%, white), color-mix(in srgb, var(--surface-container) 82%, white));
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-aside-badge {
+  display: inline-flex;
+  border-radius: var(--radius-full);
+  padding: 0.35rem 0.75rem;
+  background: color-mix(in srgb, var(--primary) 10%, white);
+  color: var(--primary);
+  font-size: var(--label-md);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-md);
+}
+
+.login-aside-title {
+  font-size: clamp(1.45rem, 3.4vw, 2rem);
+  line-height: 1.15;
+  margin-bottom: var(--space-sm);
+}
+
+.login-aside-copy {
+  color: var(--on-surface-variant);
+  max-width: 34ch;
+}
+
+.login-card {
+  margin: 0;
+  padding: clamp(1.25rem, 4vw, 1.85rem);
+}
+
+.login-title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+}
+
+.login-subtitle {
+  margin: 0 0 var(--space-lg);
+  color: var(--on-surface-variant);
+}
+
+.login-field {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: var(--space-md);
+}
+
+.login-field span {
+  font-size: var(--body-sm);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+.login-error {
+  margin: 0 0 var(--space-md);
+  color: var(--error);
+  font-size: var(--body-sm);
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+    margin-top: var(--space-lg);
+    gap: var(--space-lg);
+  }
+
+  .login-aside {
+    order: 2;
+  }
+}

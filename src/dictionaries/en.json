@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "phases": "Phases",
+    "deliverables": "Deliverables",
+    "examples": "Library",
+    "settings": "Settings",
+    "cohort": "Cohort",
+    "logout": "Log Out",
+    "login": "Log In"
+  },
+  "phases": {
+    "1": "Kickoff & Alignment",
+    "2": "Focused Diagnosis",
+    "3": "Strategic Framework",
+    "4": "Draft Development",
+    "5": "Validation",
+    "6": "Deliverables"
+  },
+  "common": {
+    "welcome": "Welcome",
+    "organization": "Organization",
+    "progress": "Progress",
+    "status": "Status",
+    "approved": "Approved",
+    "pending": "Pending",
+    "inProgress": "In Progress",
+    "locked": "Locked",
+    "requestReview": "Request Review",
+    "approve": "Approve",
+    "reject": "Reject",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "next": "Next",
+    "back": "Back",
+    "coach": "Coach",
+    "coachTip": "Coach Tip",
+    "theoryOfChange": "Theory of Change",
+    "strategicObjective": "Strategic Objective",
+    "diagnosticFindings": "Diagnostic Findings"
+  },
+  "dashboard": {
+    "title": "Organization Dashboard",
+    "currentPhase": "Current Phase",
+    "overallProgress": "Overall Progress",
+    "nextSteps": "Next Steps",
+    "recentActivity": "Recent Activity"
+  },
+  "cohort": {
+    "title": "Cohort Dashboard",
+    "subtitle": "Portfolio view of 10 organizations",
+    "bottlenecks": "Bottlenecks",
+    "avgProgress": "Average Progress",
+    "timeInPhase": "Time in Phase"
+  },
+  "roles": {
+    "ngo_admin": "NGO Admin",
+    "ngo_member": "NGO Member",
+    "facilitator": "Facilitator",
+    "focus_coordinator": "FOCUS Coordinator"
+  }
+}

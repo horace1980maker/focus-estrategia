@@ -1,0 +1,378 @@
+.sidebar {
+  width: 280px;
+  min-height: 100vh;
+  background-color: var(--surface-container-low);
+  padding: var(--space-xl) 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-sticky);
+}
+
+.sidebarBrand {
+  padding: 0 var(--space-lg) var(--space-xl);
+  font-family: var(--font-headline);
+  font-size: var(--title-md);
+  font-weight: 700;
+  color: var(--primary);
+  line-height: var(--leading-tight);
+}
+
+.sidebarBrandSub {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--label-md);
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  margin-top: var(--space-xs);
+}
+
+.sidebarNav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: 0 var(--space-sm);
+}
+
+.sidebarSection {
+  margin-top: var(--space-lg);
+  padding: 0 var(--space-sm);
+}
+
+.sidebarSectionLabel {
+  font-family: var(--font-text);
+  font-size: var(--label-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--outline);
+  margin-bottom: var(--space-sm);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-md);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--body-md);
+  font-weight: 400;
+  color: var(--on-surface-variant);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  min-height: var(--min-touch);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.navItem:hover {
+  background-color: var(--surface-container);
+  color: var(--on-surface);
+}
+
+.navItemActive {
+  composes: navItem;
+  background-color: var(--surface-container-highest);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.navItemLocked {
+  composes: navItem;
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.navIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+/* ─── Main Content Area ──────────────────────────────────────── */
+.appLayout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mainContent {
+  margin-left: 280px;
+  flex: 1;
+  padding: var(--space-2xl) var(--space-2xl);
+  background-color: var(--surface);
+}
+
+/* ─── Dashboard Grid ─────────────────────────────────────────── */
+.dashboardHeader {
+  margin-bottom: var(--space-xl);
+}
+
+.dashboardTitle {
+  font-family: var(--font-headline);
+  font-size: var(--display-sm);
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: var(--space-sm);
+}
+
+.dashboardSubtitle {
+  font-family: var(--font-body);
+  font-size: var(--body-lg);
+  color: var(--on-surface-variant);
+  max-width: 600px;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.dashboardMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.dashboardSide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+/* ─── Phase Progress Strip ───────────────────────────────────── */
+.phaseStrip {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background-color: var(--surface-container-low);
+  border-radius: var(--radius-lg);
+}
+
+.phaseStepWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.phaseStep {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--label-md);
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  color: var(--on-surface-variant);
+  transition: all var(--transition-fast);
+}
+
+.phaseStepActive {
+  composes: phaseStep;
+  background-color: var(--surface-container-highest);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.phaseStepDone {
+  composes: phaseStep;
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.phaseStepLocked {
+  composes: phaseStep;
+  opacity: 0.4;
+}
+
+/* ─── Task List ──────────────────────────────────────────────── */
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.taskItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  background-color: var(--surface-container-lowest);
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--transition-fast);
+}
+
+.taskItem:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.taskIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: var(--surface-container);
+}
+
+.taskContent {
+  flex: 1;
+}
+
+.taskTitle {
+  font-family: var(--font-body);
+  font-size: var(--body-lg);
+  font-weight: 500;
+  color: var(--on-surface);
+  margin-bottom: var(--space-xs);
+}
+
+.taskMeta {
+  font-family: var(--font-body);
+  font-size: var(--body-sm);
+  color: var(--outline);
+}
+
+/* ─── Metric Cards ───────────────────────────────────────────── */
+.metricRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-lg);
+}
+
+.metricCard {
+  background-color: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.metricLabel {
+  font-family: var(--font-text);
+  font-size: var(--label-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--outline);
+  margin-bottom: var(--space-sm);
+}
+
+.metricValue {
+  font-family: var(--font-headline);
+  font-size: var(--headline-lg);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* ─── Coach Card ─────────────────────────────────────────────── */
+.coachCard {
+  background-color: var(--tertiary-container);
+  border-radius: var(--radius-xl) var(--radius-md) var(--radius-md) var(--radius-md);
+  padding: var(--space-xl);
+  color: var(--on-tertiary-container);
+}
+
+.coachHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.coachAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--tertiary), var(--tertiary-container));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline);
+  font-size: var(--body-md);
+  font-weight: 700;
+  color: var(--on-tertiary);
+}
+
+.coachName {
+  font-family: var(--font-headline);
+  font-size: var(--title-sm);
+  font-weight: 600;
+}
+
+.coachRole {
+  font-family: var(--font-text);
+  font-size: var(--label-sm);
+  opacity: 0.7;
+}
+
+.coachMessage {
+  font-family: var(--font-body);
+  font-size: var(--body-md);
+  font-style: italic;
+  margin-bottom: var(--space-lg);
+}
+
+.coachActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.coachAction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-body);
+  font-size: var(--body-sm);
+  color: var(--on-tertiary-container);
+  padding: var(--space-sm) var(--space-md);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Section headers ─────────────────────────────────────────── */
+.sectionTitle {
+  font-family: var(--font-headline);
+  font-size: var(--headline-sm);
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: var(--space-lg);
+}
+
+/* ─── Resource cards ─────────────────────────────────────────── */
+.resourceRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.resourceCard {
+  background-color: var(--surface-container-lowest);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+
+.resourceTitle {
+  font-family: var(--font-body);
+  font-size: var(--body-md);
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+.resourceMeta {
+  font-family: var(--font-text);
+  font-size: var(--label-sm);
+  color: var(--outline);
+  margin-top: var(--space-xs);
+}

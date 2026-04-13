@@ -1,0 +1,63 @@
+{
+  "nav": {
+    "dashboard": "Panel Principal",
+    "phases": "Fases",
+    "deliverables": "Entregables",
+    "examples": "Biblioteca",
+    "settings": "Configuración",
+    "cohort": "Cohorte",
+    "logout": "Cerrar Sesión",
+    "login": "Iniciar Sesión"
+  },
+  "phases": {
+    "1": "Arranque y Alineación",
+    "2": "Diagnóstico Focalizado",
+    "3": "Marco Estratégico",
+    "4": "Desarrollo del Borrador",
+    "5": "Validación",
+    "6": "Entregables"
+  },
+  "common": {
+    "welcome": "Bienvenida",
+    "organization": "Organización",
+    "progress": "Progreso",
+    "status": "Estado",
+    "approved": "Aprobado",
+    "pending": "Pendiente",
+    "inProgress": "En Progreso",
+    "locked": "Bloqueado",
+    "requestReview": "Solicitar Revisión",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "coach": "Acompañante",
+    "coachTip": "Sugerencia del Acompañante",
+    "theoryOfChange": "Teoría del Cambio",
+    "strategicObjective": "Objetivo Estratégico",
+    "diagnosticFindings": "Hallazgos del Diagnóstico"
+  },
+  "dashboard": {
+    "title": "Panel de la Organización",
+    "currentPhase": "Fase Actual",
+    "overallProgress": "Progreso General",
+    "nextSteps": "Próximos Pasos",
+    "recentActivity": "Actividad Reciente"
+  },
+  "cohort": {
+    "title": "Panel de Cohorte",
+    "subtitle": "Vista de portafolio de 10 organizaciones",
+    "bottlenecks": "Cuellos de Botella",
+    "avgProgress": "Progreso Promedio",
+    "timeInPhase": "Tiempo en Fase"
+  },
+  "roles": {
+    "ngo_admin": "Administrador ONG",
+    "ngo_member": "Miembro ONG",
+    "facilitator": "Facilitador",
+    "focus_coordinator": "Coordinador FOCUS"
+  }
+}

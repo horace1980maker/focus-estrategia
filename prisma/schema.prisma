@@ -1,0 +1,596 @@
+// Strategic Accompaniment Workspace — Prisma Schema
+// MVP uses SQLite for rapid iteration. Switch provider to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Organization ────────────────────────────────────────────────
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  country     String?
+  description String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users              User[]
+  phaseTracker       PhaseTracker?
+  theoryOfChange     TheoryOfChange?
+  strategicObjectives StrategicObjective[]
+  diagnosticFindings DiagnosticFinding[]
+  deliverables       Deliverable[]
+  activitySessions   ActivitySession[]
+  sectionEngagements SectionEngagement[]
+  roiSettings        RoiSetting[]
+  roiSnapshots       RoiSnapshot[]
+  roiBenchmarkChanges RoiBenchmarkChange[]
+  diagnosisSurveyResponses DiagnosisSurveyResponse[]
+  phaseMigrationAudits PhaseMigrationAudit[]
+  auditEvents       AuditEvent[]
+  organizationContextSessions AuthSession[]
+  draftObjectiveResults DraftObjectiveResult[]
+  draftLinesOfAction    DraftLineOfAction[]
+  draftAssumptionRisks  DraftAssumptionRisk[]
+  draftSnapshots        DraftSnapshot[]
+  validationFeedbackResponses ValidationFeedbackResponse[]
+  validationSignoffs    ValidationSignoff[]
+}
+
+// ─── User ────────────────────────────────────────────────────────
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  username       String?  @unique
+  name           String
+  role           String   // ngo_admin | facilitator | focus_coordinator
+  organizationId String?
+  passwordHash   String?
+  passwordVersion Int     @default(0)
+  mustChangePassword Boolean @default(false)
+  isActive       Boolean  @default(true)
+  failedLoginAttempts Int @default(0)
+  lastFailedLoginAt DateTime?
+  lockedUntil    DateTime?
+  lastLoginAt    DateTime?
+  lastLoginIp    String?
+  lastLoginUserAgent String?
+  provisionedById String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  provisionedBy User? @relation("UserProvisioning", fields: [provisionedById], references: [id])
+  provisionedUsers User[] @relation("UserProvisioning")
+  phaseReviews PhaseReview[]
+  activitySessions ActivitySession[]
+  authSessions AuthSession[]
+  auditEvents AuditEvent[] @relation("AuditActor")
+  roiBenchmarkChanges RoiBenchmarkChange[] @relation("RoiBenchmarkChangeActor")
+  diagnosisSurveyResponses DiagnosisSurveyResponse[] @relation("DiagnosisSurveySubmittedBy")
+  completedPhaseOutputs PhaseOutputCompletion[] @relation("PhaseOutputCompletedBy")
+  approvedDeliverables Deliverable[] @relation("DeliverableApprovedBy")
+  draftSnapshots DraftSnapshot[] @relation("DraftSnapshotCreatedBy")
+  validationFeedbackResponses ValidationFeedbackResponse[] @relation("ValidationResponseSubmittedBy")
+  validationSignoffs ValidationSignoff[] @relation("ValidationSignoffSignedBy")
+
+  @@index([role, organizationId])
+  @@index([organizationId, isActive])
+}
+
+model AuthSession {
+  id                    String   @id @default(cuid())
+  userId                String
+  tokenHash             String   @unique
+  organizationContextId String?
+  createdAt             DateTime @default(now())
+  expiresAt             DateTime
+  lastSeenAt            DateTime @default(now())
+  revokedAt             DateTime?
+  ipAddress             String?
+  userAgent             String?
+
+  user                User          @relation(fields: [userId], references: [id])
+  organizationContext Organization? @relation(fields: [organizationContextId], references: [id])
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([organizationContextId, expiresAt])
+}
+
+model AuditEvent {
+  id               String   @id @default(cuid())
+  eventKey         String
+  eventType        String   @default("mutation") // mutation | denied | auth | ops
+  actorId          String?
+  actorRole        String?
+  organizationId   String?
+  targetEntityType String?
+  targetEntityId   String?
+  metadataJson     String?
+  createdAt        DateTime @default(now())
+
+  actor        User?         @relation("AuditActor", fields: [actorId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([createdAt])
+  @@index([eventKey, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+// ─── Phase Tracker ───────────────────────────────────────────────
+// One per Organization — tracks which phase is active and status of each
+model PhaseTracker {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  currentPhase   Int      @default(1) // 1-6
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  phases       Phase[]
+}
+
+// ─── Phase ───────────────────────────────────────────────────────
+// Individual phase record with status tracking
+model Phase {
+  id             String   @id @default(cuid())
+  phaseTrackerId String
+  phaseNumber    Int      // 1-6
+  phaseKey       String   @default("onboarding") // onboarding | diagnosis | framework | draft | validation | deliverables
+  status         String   @default("locked") // locked | in_progress | review_requested | approved
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  phaseTracker PhaseTracker @relation(fields: [phaseTrackerId], references: [id])
+  reviews      PhaseReview[]
+  outputCompletions PhaseOutputCompletion[]
+
+  @@unique([phaseTrackerId, phaseNumber])
+  @@unique([phaseTrackerId, phaseKey])
+}
+
+// ─── Phase Review ────────────────────────────────────────────────
+// Facilitator feedback on a phase
+model PhaseReview {
+  id         String   @id @default(cuid())
+  phaseId    String
+  reviewerId String
+  decision   String   // approved | rejected
+  feedback   String?
+  createdAt  DateTime @default(now())
+
+  phase    Phase @relation(fields: [phaseId], references: [id])
+  reviewer User  @relation(fields: [reviewerId], references: [id])
+}
+
+// ─── Theory of Change ────────────────────────────────────────────
+// One per organization — the backbone of strategic framework (Phase 3)
+model TheoryOfChange {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  impactStatement String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  outcomes     Outcome[]
+  pathways     Pathway[]
+}
+
+model Outcome {
+  id               String @id @default(cuid())
+  theoryOfChangeId String
+  title            String
+  description      String?
+  level            String // long_term | intermediate | immediate
+  orderIndex       Int    @default(0)
+
+  theoryOfChange TheoryOfChange @relation(fields: [theoryOfChangeId], references: [id])
+}
+
+model Pathway {
+  id               String @id @default(cuid())
+  theoryOfChangeId String
+  title            String
+  description      String?
+  orderIndex       Int    @default(0)
+
+  theoryOfChange TheoryOfChange @relation(fields: [theoryOfChangeId], references: [id])
+}
+
+// ─── Strategic Objective ─────────────────────────────────────────
+model StrategicObjective {
+  id             String @id @default(cuid())
+  organizationId String
+  title          String
+  description    String?
+  priority       Int    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  draftObjectiveResults DraftObjectiveResult[]
+}
+
+// ─── Diagnostic Finding ─────────────────────────────────────────
+model DiagnosticFinding {
+  id             String @id @default(cuid())
+  organizationId String
+  category       String  // internal | external | stakeholder
+  title          String
+  description    String?
+  severity       String  @default("medium") // low | medium | high | critical
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+}
+
+// ─── Deliverable ─────────────────────────────────────────────────
+model Deliverable {
+  id             String   @id @default(cuid())
+  organizationId String
+  phaseNumber    Int
+  phaseKey       String   @default("deliverables")
+  title          String
+  fileUrl        String?
+  status         String   @default("draft") // draft | in_review | approved | published
+  readinessStatus String  @default("not_ready") // not_ready | ready_for_review
+  versionNumber  Int      @default(1)
+  sourcePhaseRefsJson String?
+  exportMetadataJson String?
+  generatedAt    DateTime?
+  approvedAt     DateTime?
+  approvedById   String?
+  publishedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  approvedBy   User?        @relation("DeliverableApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([organizationId, status, updatedAt])
+  @@index([organizationId, versionNumber])
+}
+
+// ——— Diagnosis Survey Definitions & Responses ——————————————————————————
+model DiagnosisSurveyDefinition {
+  id                     String   @id @default(cuid())
+  version                String   @unique
+  name                   String
+  isActive               Boolean  @default(false)
+  scaleDefinitionJson    String?
+  interpretationGuideJson String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  sections  DiagnosisSurveySection[]
+  questions DiagnosisSurveyQuestion[]
+  responses DiagnosisSurveyResponse[]
+}
+
+model DiagnosisSurveySection {
+  id           String   @id @default(cuid())
+  definitionId String
+  sectionKey   String
+  title        String
+  description  String?
+  orderIndex   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  definition DiagnosisSurveyDefinition @relation(fields: [definitionId], references: [id])
+  questions  DiagnosisSurveyQuestion[]
+
+  @@unique([definitionId, sectionKey])
+  @@index([definitionId, orderIndex])
+}
+
+model DiagnosisSurveyQuestion {
+  id                  String   @id @default(cuid())
+  definitionId        String
+  sectionId           String?
+  questionKey         String
+  prompt              String
+  questionType        String   // likert_1_5 | open_text
+  isRequired          Boolean  @default(true)
+  scaleMin            Int?
+  scaleMax            Int?
+  allowsNoInformation Boolean  @default(false)
+  interpretationNote  String?
+  orderIndex          Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  definition DiagnosisSurveyDefinition @relation(fields: [definitionId], references: [id])
+  section    DiagnosisSurveySection?   @relation(fields: [sectionId], references: [id])
+  answers    DiagnosisSurveyAnswer[]
+
+  @@unique([definitionId, questionKey])
+  @@index([definitionId, orderIndex])
+}
+
+model DiagnosisSurveyResponse {
+  id             String   @id @default(cuid())
+  organizationId String
+  definitionId   String
+  submittedById  String?
+  responseStatus String   @default("submitted")
+  submittedAt    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  definition   DiagnosisSurveyDefinition @relation(fields: [definitionId], references: [id])
+  submittedBy  User?                    @relation("DiagnosisSurveySubmittedBy", fields: [submittedById], references: [id])
+  answers      DiagnosisSurveyAnswer[]
+
+  @@index([organizationId, submittedAt])
+  @@index([definitionId])
+}
+
+model DiagnosisSurveyAnswer {
+  id              String   @id @default(cuid())
+  responseId      String
+  questionId      String
+  numericValue    Int?
+  optionValue     String?
+  textValue       String?
+  isNoInformation Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  response DiagnosisSurveyResponse @relation(fields: [responseId], references: [id])
+  question DiagnosisSurveyQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([responseId, questionId])
+}
+
+// ——— Migration Audit for Phase Canonicalization —————————————————————————
+model PhaseMigrationAudit {
+  id                   String   @id @default(cuid())
+  organizationId       String
+  previousCurrentPhase Int
+  mappedCurrentPhase   Int
+  confidence           String   // high | low
+  reason               String
+  createdAt            DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model PhaseOutputCompletion {
+  id            String   @id @default(cuid())
+  phaseId       String
+  outputKey     String
+  outputLabel   String
+  isRequired    Boolean  @default(true)
+  isCompleted   Boolean  @default(false)
+  completedAt   DateTime?
+  completedById String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  phase       Phase @relation(fields: [phaseId], references: [id])
+  completedBy User? @relation("PhaseOutputCompletedBy", fields: [completedById], references: [id])
+
+  @@unique([phaseId, outputKey])
+  @@index([phaseId, isCompleted])
+}
+
+// ——— Engagement Analytics ——————————————————————————————————————————————
+model ActivitySession {
+  id                String   @id @default(cuid())
+  organizationId    String
+  userId            String
+  userRole          String
+  phaseNumber       Int      @default(0) // 0 when phase is unknown
+  sectionKey        String
+  startedAt         DateTime @default(now())
+  lastActivityAt    DateTime @default(now())
+  endedAt           DateTime?
+  durationMinutes   Int?
+  isClosedByTimeout Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, startedAt])
+  @@index([organizationId, sectionKey, startedAt])
+  @@index([organizationId, phaseNumber, startedAt])
+  @@index([userId, endedAt])
+}
+
+model SectionEngagement {
+  id             String   @id @default(cuid())
+  organizationId String
+  phaseNumber    Int      @default(0) // 0 for non-phase-specific sections
+  sectionKey     String
+  windowStart    DateTime
+  windowEnd      DateTime
+  totalMinutes   Int      @default(0)
+  sessionsCount  Int      @default(0)
+  completedTasks Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, phaseNumber, sectionKey, windowStart, windowEnd], name: "org_phase_section_window")
+  @@index([organizationId, windowStart])
+  @@index([organizationId, phaseNumber, windowStart])
+}
+
+// ——— ROI Benchmarking ———————————————————————————————————————————————
+model RoiSetting {
+  id                         String   @id @default(cuid())
+  organizationId             String?
+  hourlyRateUsd              Float    @default(20)
+  baselineManualHoursPerTask Float    @default(1.5)
+  isDefault                  Boolean  @default(false)
+  updatedBy                  String
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId], name: "roi_setting_per_org")
+  @@index([isDefault])
+}
+
+model RoiBenchmarkChange {
+  id                              String   @id @default(cuid())
+  organizationId                  String?
+  scope                           String   @default("organization") // organization | default
+  previousHourlyRateUsd           Float?
+  newHourlyRateUsd                Float
+  previousBaselineManualHoursPerTask Float?
+  newBaselineManualHoursPerTask   Float
+  changedById                     String?
+  changeReason                    String?
+  createdAt                       DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  changedBy    User?         @relation("RoiBenchmarkChangeActor", fields: [changedById], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([scope, createdAt])
+  @@index([changedById, createdAt])
+}
+
+model RoiSnapshot {
+  id                         String   @id @default(cuid())
+  organizationId             String?
+  scope                      String   @default("organization") // organization | cohort
+  periodStart                DateTime
+  periodEnd                  DateTime
+  platformHours              Float    @default(0)
+  manualHoursEstimate        Float    @default(0)
+  hoursSaved                 Float    @default(0)
+  usdSaved                   Float    @default(0)
+  hourlyRateUsd              Float
+  baselineManualHoursPerTask Float
+  totalCompletedTasks        Int      @default(0)
+  totalTrackedMinutes        Int      @default(0)
+  generatedAt                DateTime @default(now())
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([scope, periodStart, periodEnd])
+  @@index([organizationId, periodStart, periodEnd])
+}
+
+// ──── Phase 4: Draft Builder Entities ────────────────────────────
+
+model DraftObjectiveResult {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  sourceObjectiveId   String?
+  title               String
+  description         String?
+  expectedResults     String?
+  owner               String?
+  timelineStart       DateTime?
+  timelineEnd         DateTime?
+  orderIndex          Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  sourceObjective   StrategicObjective? @relation(fields: [sourceObjectiveId], references: [id])
+  linesOfAction     DraftLineOfAction[]
+
+  @@index([organizationId, orderIndex])
+}
+
+model DraftLineOfAction {
+  id                    String   @id @default(cuid())
+  organizationId        String
+  objectiveResultId     String?
+  title                 String
+  description           String?
+  initiativesJson       String?  // JSON array of initiative objects
+  timelineStart         DateTime?
+  timelineEnd           DateTime?
+  orderIndex            Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  objectiveResult DraftObjectiveResult? @relation(fields: [objectiveResultId], references: [id])
+
+  @@index([organizationId, orderIndex])
+}
+
+model DraftAssumptionRisk {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String   // assumption | risk
+  description    String
+  category       String?
+  mitigation     String?
+  orderIndex     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, type])
+}
+
+model DraftSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  versionNumber  Int
+  content        String
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User?        @relation("DraftSnapshotCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([organizationId, versionNumber])
+  @@index([organizationId, versionNumber])
+}
+
+// ─── Validation (Phase 5) ────────────────────────────────────────
+
+model ValidationFeedbackResponse {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  response       String
+  submittedById  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  submittedBy    User?        @relation("ValidationResponseSubmittedBy", fields: [submittedById], references: [id])
+}
+
+model ValidationSignoff {
+  id             String   @id @default(cuid())
+  organizationId String
+  signerName     String
+  signerRole     String
+  signedById     String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  signedBy       User?        @relation("ValidationSignoffSignedBy", fields: [signedById], references: [id])
+
+  @@index([organizationId])
+}

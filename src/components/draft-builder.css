@@ -1,0 +1,407 @@
+/* ── Draft Builder Panel ──────────────────────────────────────── */
+
+.draft-builder-panel {
+  margin-top: 1.5rem;
+}
+
+.draft-builder-header {
+  margin-bottom: 1.5rem;
+}
+
+.draft-builder-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.25rem;
+}
+
+.draft-builder-subtitle {
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Readiness Indicator ─────────────────────────────────────── */
+
+.draft-readiness-indicator {
+  background: var(--color-surface, #f8f9fc);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.draft-readiness-indicator h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 0 0 0.75rem;
+}
+
+.draft-readiness-bar-container {
+  position: relative;
+  background: var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  height: 28px;
+  overflow: visible;
+  margin-bottom: 1rem;
+}
+
+.draft-readiness-bar-fill {
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 8px;
+  height: 100%;
+  min-width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.4s ease;
+}
+
+.draft-readiness-bar-label {
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.draft-readiness-threshold-marker {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  background: var(--color-text-primary, #1a1a2e);
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+
+.draft-readiness-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.draft-readiness-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  border: 1px solid transparent;
+}
+
+.chip-complete {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.chip-incomplete {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.chip-icon {
+  font-weight: 700;
+}
+
+.chip-status {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.draft-readiness-gate-status {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.gate-pass {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.gate-blocked {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ── Collapsible Sections ────────────────────────────────────── */
+
+.draft-section {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.draft-section-toggle {
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface, #f8f9fc);
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.draft-section-toggle:hover {
+  background: var(--color-surface-hover, #f0f1f5);
+}
+
+.draft-section-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.draft-section-toggle::before {
+  content: "▸";
+  font-size: 0.9rem;
+  transition: transform 0.2s ease;
+}
+
+details[open] > .draft-section-toggle::before {
+  transform: rotate(90deg);
+}
+
+.draft-section-title {
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.draft-section-content {
+  padding: 1.25rem;
+}
+
+.draft-subsection-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1a1a2e);
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.draft-subsection-title:first-child {
+  margin-top: 0;
+}
+
+/* ── Entry Cards ─────────────────────────────────────────────── */
+
+.draft-entry-card {
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.draft-entry-assumption {
+  border-left: 3px solid #6366f1;
+}
+
+.draft-entry-risk {
+  border-left: 3px solid #ef4444;
+}
+
+/* ── Form Fields ─────────────────────────────────────────────── */
+
+.draft-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.draft-field > span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.draft-field input[type="text"],
+.draft-field input[type="date"],
+.draft-field textarea,
+.draft-field select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--color-bg, #fff);
+  color: var(--color-text-primary, #1a1a2e);
+  transition: border-color 0.15s;
+}
+
+.draft-field input:focus,
+.draft-field textarea:focus,
+.draft-field select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.draft-field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+
+.draft-save-btn,
+.draft-add-btn {
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.draft-save-btn {
+  background: #6366f1;
+  color: #fff;
+}
+
+.draft-save-btn:hover {
+  background: #4f46e5;
+}
+
+.draft-save-btn:active {
+  transform: scale(0.98);
+}
+
+.draft-add-btn {
+  background: var(--color-surface, #f8f9fc);
+  color: var(--color-text-primary, #1a1a2e);
+  border: 1px dashed var(--color-border, #e5e7eb);
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+}
+
+.draft-add-btn:hover {
+  background: var(--color-surface-hover, #f0f1f5);
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.draft-add-form {
+  border: 1px dashed var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  background: var(--color-surface, #f8f9fc);
+}
+
+/* ── Read-Only States ────────────────────────────────────────── */
+
+.draft-entry-readonly {
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+.draft-entry-readonly h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.draft-entry-readonly p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.draft-field-display {
+  font-size: 0.85rem;
+  margin: 0.25rem 0;
+}
+
+.draft-tag {
+  display: inline-block;
+  background: var(--color-surface, #f8f9fc);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+  margin-top: 0.25rem;
+}
+
+.draft-initiatives-list {
+  margin: 0.35rem 0 0 1rem;
+  padding: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* ── Narrative ───────────────────────────────────────────────── */
+
+.draft-narrative-form textarea {
+  min-height: 200px;
+  font-family: inherit;
+}
+
+.draft-narrative-readonly {
+  padding: 0;
+}
+
+.draft-narrative-content {
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-primary, #1a1a2e);
+}
+
+/* ── Version History ─────────────────────────────────────────── */
+
+.draft-version-history {
+  margin-top: 1rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  padding-top: 0.75rem;
+}
+
+.draft-version-history h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0 0 0.5rem;
+}
+
+.draft-version-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.draft-version-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #6b7280);
+  border-bottom: 1px solid var(--color-border-light, #f3f4f6);
+}
+
+.draft-version-date {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+/* ── Empty State ─────────────────────────────────────────────── */
+
+.draft-empty {
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 0.5rem 0;
+}

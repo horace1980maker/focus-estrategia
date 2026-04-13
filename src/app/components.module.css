@@ -1,0 +1,217 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: var(--text-body-md);
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-3) var(--space-5);
+  min-height: var(--min-touch-target);
+  min-width: var(--min-touch-target);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Primary — Deep Navy background, white text */
+.btnPrimary {
+  composes: btn;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-container));
+  color: var(--color-on-primary);
+}
+
+.btnPrimary:hover {
+  box-shadow: 0 4px 12px rgba(42, 72, 80, 0.25);
+  transform: translateY(-1px);
+}
+
+.btnPrimary:active {
+  transform: translateY(0);
+}
+
+/* Secondary — Surface background, primary text */
+.btnSecondary {
+  composes: btn;
+  background-color: var(--color-surface-container-high);
+  color: var(--color-primary);
+}
+
+.btnSecondary:hover {
+  background-color: var(--color-surface-container-highest);
+}
+
+/* Tertiary / Ghost — Transparent, primary text */
+.btnTertiary {
+  composes: btn;
+  background-color: transparent;
+  color: var(--color-primary);
+}
+
+.btnTertiary:hover {
+  background-color: var(--color-surface-container-low);
+}
+
+/* Danger */
+.btnDanger {
+  composes: btn;
+  background-color: var(--color-error);
+  color: var(--color-on-error);
+}
+
+.btnDanger:hover {
+  box-shadow: 0 4px 12px rgba(186, 26, 26, 0.25);
+}
+
+/* Sizes */
+.btnSm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-body-sm);
+  min-height: 36px;
+}
+
+.btnLg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-body-lg);
+}
+
+/* ─── Input ─────────────────────────────────────────────────── */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.inputLabel {
+  font-family: var(--font-label);
+  font-size: var(--text-label-md);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-on-surface-variant);
+}
+
+.input {
+  font-family: var(--font-body);
+  font-size: var(--text-body-lg);
+  padding: var(--space-3);
+  min-height: var(--min-touch-target);
+  background-color: var(--color-surface-variant);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--color-on-surface);
+  transition: border-color var(--transition-fast);
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-bottom-color: var(--color-primary);
+}
+
+.input::placeholder {
+  color: var(--color-outline);
+}
+
+/* ─── Card ──────────────────────────────────────────────────── */
+.card {
+  background-color: var(--color-surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: box-shadow var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+/* Coach callout — Muted Gold accent, asymmetric corner */
+.coachCallout {
+  background-color: var(--color-tertiary-container);
+  color: var(--color-on-tertiary-container);
+  border-radius: var(--radius-xl) var(--radius-md) var(--radius-md) var(--radius-md);
+  padding: var(--space-5);
+}
+
+/* ─── Chip / Badge ──────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-label);
+  font-size: var(--text-label-md);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  border-radius: var(--radius-full);
+  background-color: var(--color-secondary-fixed);
+  color: var(--color-on-secondary-fixed-variant);
+  min-height: 28px;
+}
+
+.chipSuccess {
+  composes: chip;
+  background-color: var(--color-primary-fixed);
+  color: var(--color-on-primary-fixed);
+}
+
+.chipWarning {
+  composes: chip;
+  background-color: var(--color-tertiary-fixed);
+  color: var(--color-on-tertiary-fixed);
+}
+
+.chipError {
+  composes: chip;
+  background-color: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+/* ─── Progress Bar ──────────────────────────────────────────── */
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-secondary-container);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: var(--color-secondary);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-slow);
+}
+
+/* ─── Modal Overlay ─────────────────────────────────────────── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(26, 28, 29, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background-color: var(--color-surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  max-width: 560px;
+  width: 90%;
+  box-shadow: var(--shadow-ambient);
+  max-height: 85vh;
+  overflow-y: auto;
+}

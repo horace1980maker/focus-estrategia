@@ -34,3 +34,61 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Feature Flags
+
+The phase workspace and deliverables rollout is controlled by environment flags:
+
+- `PHASE_WORKSPACES_ENABLED` (`true` by default)
+- `DELIVERABLES_LIFECYCLE_ENABLED` (`true` by default)
+
+Examples:
+
+```bash
+PHASE_WORKSPACES_ENABLED=true
+DELIVERABLES_LIFECYCLE_ENABLED=false
+```
+
+Recommended rollback order:
+
+1. Disable `DELIVERABLES_LIFECYCLE_ENABLED`
+2. Validate `/deliverables` and sidebar behavior
+3. Disable `PHASE_WORKSPACES_ENABLED` if broader rollback is needed
+
+## Hardening Operations
+
+- Seed deterministic fixture orgs from `organizaciones.csv`:
+
+```bash
+npm run seed:hardening
+```
+
+- Runbooks:
+  - `docs/operations/migration-safety-platform-hardening.md`
+  - `docs/operations/backup-restore-runbook.md`
+  - `docs/operations/authorization-audit-triage-runbook.md`
+  - `docs/operations/hardening-rollout-checklist.md`
+
+## Deployment (Coolify + Hetzner)
+
+This repository now includes production deployment assets:
+
+- `Dockerfile`
+- `.dockerignore`
+- `.env.example`
+- `GET /api/health` health endpoint
+
+Recommended settings:
+
+1. Set app base directory to `app/`.
+2. Use the provided `Dockerfile` build.
+3. Configure a persistent volume mounted into `/app/data`.
+4. Set `DATABASE_URL=file:./data/prod.db`.
+5. Set `AUTH_ALLOW_MOCK_FALLBACK=false`.
+6. Use `/api/health` as readiness/liveness probe.
+
+Production startup command is handled by the Docker image and runs:
+
+```bash
+npx prisma migrate deploy && npm run start
+```

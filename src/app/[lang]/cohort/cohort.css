@@ -1,0 +1,221 @@
+/* ─── Cohort Dashboard ─── */
+.welcome-header {
+  margin-bottom: var(--space-xl);
+}
+
+.org-name {
+  font-family: var(--font-headline);
+  font-size: var(--title-lg);
+  color: var(--on-surface);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+}
+
+.welcome-text {
+  font-family: var(--font-body);
+  font-size: var(--body-lg);
+  color: var(--on-surface-variant);
+  max-width: 600px;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+}
+
+.metric-card {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-label {
+  font-size: var(--label-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--outline);
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-xs);
+}
+
+.metric-value {
+  font-family: var(--font-headline);
+  font-size: var(--display-sm);
+  font-weight: 700;
+  color: var(--primary);
+  line-height: var(--leading-tight);
+}
+
+.metric-sub {
+  font-size: var(--body-sm);
+  color: var(--on-surface-variant);
+  margin-top: var(--space-xs);
+}
+
+.progress-track {
+  width: 100%;
+  background: var(--surface-variant);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+}
+
+.cohort-table-container {
+  background: var(--surface-container-lowest);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.cohort-table-header {
+  margin-bottom: var(--space-xl);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cohort-table-header h3 {
+  font-family: var(--font-headline);
+  font-size: var(--title-lg);
+  color: var(--on-surface);
+}
+
+.cohort-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cohort-table th {
+  text-align: left;
+  padding: var(--space-md) var(--space-sm);
+  font-size: var(--label-md);
+  color: var(--outline);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.cohort-table td {
+  padding: var(--space-lg) var(--space-sm);
+  border-bottom: 1px solid rgba(204, 200, 193, 0.15);
+  vertical-align: middle;
+}
+
+.cohort-table tr:last-child td {
+  border-bottom: none;
+}
+
+.org-name-cell {
+  font-size: var(--body-lg);
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.phase-badge {
+  display: inline-block;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-full);
+  font-size: var(--label-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phase-badge-active {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.table-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.table-progress-text {
+  font-size: var(--body-sm);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  min-width: 40px;
+}
+
+.status-badge {
+  font-size: var(--label-md);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.status-badge::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.status-badge.ok {
+  color: var(--secondary);
+}
+.status-badge.ok::before {
+  background: var(--secondary);
+}
+
+.status-badge.alert {
+  color: var(--error);
+}
+.status-badge.alert::before {
+  background: var(--error);
+}
+
+.btn-table {
+  font-size: var(--body-sm);
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.btn-table:hover {
+  background: var(--surface-container);
+}
+
+/* Phase Dist Mini Chart */
+.phase-dist-row {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.phase-dist-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.phase-dist-label {
+  font-size: 10px;
+  color: var(--outline);
+  font-weight: 700;
+}
+
+.phase-dist-count {
+  font-size: var(--body-md);
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-container);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
