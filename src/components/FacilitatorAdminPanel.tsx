@@ -284,7 +284,13 @@ export function FacilitatorAdminPanel({
             }
 
             form.reset();
-            setStatus({ type: "success", message: copy.successReset });
+            const organizationLabel =
+              organizations.find((organization) => organization.id === organizationId)?.name ??
+              organizationId;
+            setStatus({
+              type: "success",
+              message: `${copy.successReset} (${organizationLabel})`,
+            });
             router.refresh();
           });
         }}

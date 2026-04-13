@@ -286,6 +286,15 @@ export async function resetOrganizationContentAsFacilitator(input: {
         where: { organizationId: organization.id },
       });
 
+      await tx.organization.update({
+        where: { id: organization.id },
+        data: {
+          country: null,
+          description: null,
+          logoUrl: null,
+        },
+      });
+
       if (tracker?.id) {
         await tx.phaseOutputCompletion.deleteMany({
           where: {

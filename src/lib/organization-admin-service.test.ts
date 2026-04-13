@@ -212,6 +212,7 @@ test("organization reset clears workflow artifacts and restores baseline phases"
       actor: session,
       name: `Org Reset ${id}`,
       country: "El Salvador",
+      description: "This should be cleared by reset.",
     });
     organizationId = organization.id;
 
@@ -358,9 +359,13 @@ test("organization reset clears workflow artifacts and restores baseline phases"
 
     const persistedOrganization = await prisma.organization.findUnique({
       where: { id: organization.id },
-      select: { id: true },
+      select: { id: true, name: true, country: true, description: true, logoUrl: true },
     });
     assert.ok(persistedOrganization);
+    assert.equal(persistedOrganization?.name, organization.name);
+    assert.equal(persistedOrganization?.country, null);
+    assert.equal(persistedOrganization?.description, null);
+    assert.equal(persistedOrganization?.logoUrl, null);
     const persistedAdmin = await prisma.user.findUnique({
       where: { id: admin.id },
       select: { id: true, organizationId: true },
