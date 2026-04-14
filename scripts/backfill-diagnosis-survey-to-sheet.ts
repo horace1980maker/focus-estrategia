@@ -109,8 +109,8 @@ function formatMultiSelectAnswerForSheets(interpretationNote: string | null, raw
 
     return selectedOptions
       .filter((value: unknown): value is string => typeof value === "string")
-      .map((value) => getQuestionOptionLabel(interpretationNote, value.trim()))
-      .filter((value) => value.length > 0)
+      .map((value: string) => getQuestionOptionLabel(interpretationNote, value.trim()))
+      .filter((value: string) => value.length > 0)
       .join(" | ");
   } catch {
     return rawTextValue;
