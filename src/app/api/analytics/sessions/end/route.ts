@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { finalizeActivitySessionById, finalizeLatestSessionForSection } from "@/lib/analytics";
-import { getSession, isAuthenticationRequiredError } from "@/lib/session";
+import { getSessionOrNull } from "@/lib/session";
 
 type EndPayload = {
   sessionId?: string;
@@ -27,8 +27,16 @@ async function parsePayload(request: NextRequest): Promise<EndPayload> {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getSessionOrNull();
+  if (!session) {
+    return NextResponse.json({
+      sessionId: null,
+      endedAt: null,
+      durationMinutes: 0,
+    });
+  }
+
   try {
-    const session = await getSession();
     const body = await parsePayload(request);
 
     if (body.sessionId) {
@@ -62,9 +70,6 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   } catch (error) {
-    if (isAuthenticationRequiredError(error)) {
-      return NextResponse.json({ error: "Authentication required." }, { status: 401 });
-    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to end session." },
       { status: 500 },

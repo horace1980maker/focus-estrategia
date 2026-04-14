@@ -23,7 +23,7 @@ function sendSessionEnd(payload: { sessionId: string; sectionKey: string }) {
     headers: { "Content-Type": "application/json" },
     body,
     keepalive: true,
-  });
+  }).catch(() => undefined);
 }
 
 export function TelemetryTracker({
@@ -71,7 +71,7 @@ export function TelemetryTracker({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ sessionId }),
             cache: "no-store",
-          });
+          }).catch(() => undefined);
         }, HEARTBEAT_MS);
       } catch {
         // Best-effort tracker: do not block UI when telemetry fails.

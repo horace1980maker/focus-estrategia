@@ -380,6 +380,79 @@ test("organization reset clears workflow artifacts and restores baseline phases"
   }
 });
 
+test("organization reset preserves facilitator active auth session", async () => {
+  const { facilitator, session } = await createFacilitatorSession();
+  const id = suffix();
+  let organizationId: string | null = null;
+
+  try {
+    const organization = await createOrganizationAsFacilitator({
+      actor: session,
+      name: `Org Reset Preserve Session ${id}`,
+    });
+    organizationId = organization.id;
+
+    const orgAdmin = await prisma.user.create({
+      data: {
+        email: `org-admin-${id}@example.org`,
+        username: `org-admin-${id}`,
+        name: `Org Admin ${id}`,
+        role: ROLES.NGO_ADMIN,
+        organizationId: organization.id,
+        isActive: true,
+      },
+    });
+
+    const facilitatorAuthSession = await prisma.authSession.create({
+      data: {
+        userId: facilitator.id,
+        tokenHash: `token-${randomUUID()}`,
+        organizationContextId: organization.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    await prisma.authSession.create({
+      data: {
+        userId: orgAdmin.id,
+        tokenHash: `token-${randomUUID()}`,
+        organizationContextId: organization.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+
+    await resetOrganizationContentAsFacilitator({
+      actor: {
+        ...session,
+        organizationId: organization.id,
+        authSessionId: facilitatorAuthSession.id,
+      },
+      organizationId: organization.id,
+      confirmationText: ORGANIZATION_RESET_CONFIRMATION,
+    });
+
+    const preservedSession = await prisma.authSession.findUnique({
+      where: { id: facilitatorAuthSession.id },
+      select: { id: true, userId: true, organizationContextId: true },
+    });
+    assert.ok(preservedSession);
+    assert.equal(preservedSession?.userId, facilitator.id);
+    assert.equal(preservedSession?.organizationContextId, organization.id);
+
+    const remainingOrganizationSessions = await prisma.authSession.count({
+      where: {
+        organizationContextId: organization.id,
+        NOT: { id: facilitatorAuthSession.id },
+      },
+    });
+    assert.equal(remainingOrganizationSessions, 0);
+  } finally {
+    if (organizationId) {
+      await cleanupOrganization(organizationId);
+    }
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
 test("organization reset requires typed confirmation text", async () => {
   const { facilitator, session } = await createFacilitatorSession();
   const id = suffix();

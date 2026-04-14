@@ -5,13 +5,10 @@ import { setPhaseOutputCompletionAction } from "@/app/actions/phases";
 import type { Locale } from "@/i18n/config";
 import { getPhaseDescription } from "@/lib/phase-metadata";
 import { prisma } from "@/lib/prisma";
-import {
-  getPhaseGateMessage,
-  getPhaseStatusLabel,
-  getWorkspaceStateHint,
-} from "@/lib/phase-workspace-copy";
+import { getPhaseGateMessage, getPhaseStatusLabel, getWorkspaceStateHint } from "@/lib/phase-workspace-copy";
 import { getPhaseOutputStatus, getTotalPhases } from "@/lib/phases";
 import { getDictionary } from "@/i18n/get-dictionary";
+import { FileIcon } from "@/components/icons";
 
 type PhaseWorkspaceShellProps = {
   lang: Locale;
@@ -79,6 +76,9 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
       }).format(latestReview.createdAt)
     : null;
 
+  const organizationMouDownloadUrl = process.env.NEXT_PUBLIC_ORG_MOU_DOWNLOAD_URL?.trim() || "";
+  const hasOrganizationMouDownloadUrl = organizationMouDownloadUrl !== "";
+
   return (
     <section className="phase-workspace-shell">
       <header className="phase-workspace-header">
@@ -144,6 +144,55 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
                     ? "Pendiente"
                     : "Pending"}
               </p>
+
+              {output.outputKey === "memorandum-of-understanding" ? (
+                hasOrganizationMouDownloadUrl ? (
+                  <a
+                    href={organizationMouDownloadUrl}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      marginBottom: "var(--space-sm)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      width: "100%",
+                    }}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                  >
+                    <FileIcon size={14} />
+                    {dict.dashboard.mou_download}
+                  </a>
+                ) : (
+                  <div style={{ marginBottom: "var(--space-sm)" }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.45rem",
+                        width: "100%",
+                      }}
+                    >
+                      <FileIcon size={14} />
+                      {dict.dashboard.mou_download}
+                    </button>
+                    <p
+                      className="metric-sub"
+                      style={{
+                        fontSize: "var(--label-sm)",
+                        marginTop: "var(--space-xs)",
+                        color: "var(--outline)",
+                      }}
+                    >
+                      {dict.dashboard.mou_link_pending}
+                    </p>
+                  </div>
+                )
+              ) : null}
 
               {canEditPhaseOutputs ? (
                 <form

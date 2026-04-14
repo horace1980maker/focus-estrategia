@@ -78,6 +78,9 @@ export default async function DashboardPage({
   const roleContract = getRoleViewContract(session.role);
   const isFacilitator = session.role === ROLES.FACILITATOR;
   const isOrgDashboard = session.role === ROLES.NGO_ADMIN;
+  const organizationMouDownloadUrl =
+    process.env.NEXT_PUBLIC_ORG_MOU_DOWNLOAD_URL?.trim() || "";
+  const hasOrganizationMouDownloadUrl = organizationMouDownloadUrl !== "";
   const showPendingQueue = getQueryValue(query.queue) === "pending";
 
   const [organization, phaseStatus, facilitatorAdminOrganizations] = await Promise.all([
@@ -537,6 +540,7 @@ export default async function DashboardPage({
               <ChevronRightIcon size={16} />
             </Link>
           </div>
+
         </div>
       </div>
     </>

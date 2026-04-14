@@ -26,7 +26,7 @@
   },
   "outputs": {
     "organization-profile": "Organization Profile",
-    "engagement-plan": "Engagement Plan",
+    "memorandum-of-understanding": "Memorandum de Entendimiento",
     "diagnosis-survey": "Diagnosis Survey",
     "diagnosis-synthesis": "Diagnosis Synthesis",
     "theory-of-change": "Theory of Change",
@@ -71,7 +71,11 @@
     "facilitator_notes": "Facilitator Notes",
     "scorecard": "Scorecard",
     "what_to_do_now": "What to Do Now",
-    "recent_deliverables": "Recent Deliverables"
+    "recent_deliverables": "Recent Deliverables",
+    "mou_title": "Memorandum de Entendimiento",
+    "mou_description": "Descarga el Memorandum de Entendimiento oficial para esta organización.",
+    "mou_download": "Descargar documento",
+    "mou_link_pending": "Link pending setup"
   },
   "login": {
     "home_link": "Back to home"

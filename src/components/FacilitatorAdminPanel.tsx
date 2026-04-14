@@ -99,10 +99,20 @@ export function FacilitatorAdminPanel({
   const [organizations, setOrganizations] = useState<OrganizationOption[]>(initialOrganizations);
   const [status, setStatus] = useState<PanelStatus>(null);
 
-  const hasOrganizations = organizations.length > 0;
+  const uniqueOrganizations = useMemo(() => {
+    const map = new Map<string, OrganizationOption>();
+    for (const org of organizations) {
+      if (!Array.from(map.values()).some((o) => o.name === org.name)) {
+        map.set(org.id, org);
+      }
+    }
+    return Array.from(map.values());
+  }, [organizations]);
+
+  const hasOrganizations = uniqueOrganizations.length > 0;
   const defaultOrganizationId = useMemo(
-    () => organizations[0]?.id ?? "",
-    [organizations],
+    () => uniqueOrganizations[0]?.id ?? "",
+    [uniqueOrganizations],
   );
 
   return (
@@ -228,7 +238,7 @@ export function FacilitatorAdminPanel({
               required
               disabled={!hasOrganizations}
             >
-              {organizations.map((organization) => (
+              {uniqueOrganizations.map((organization) => (
                 <option key={organization.id} value={organization.id}>
                   {organization.name}
                 </option>
@@ -306,7 +316,7 @@ export function FacilitatorAdminPanel({
             required
             disabled={!hasOrganizations}
           >
-            {organizations.map((organization) => (
+            {uniqueOrganizations.map((organization) => (
               <option key={organization.id} value={organization.id}>
                 {organization.name}
               </option>

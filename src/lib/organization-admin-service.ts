@@ -82,20 +82,46 @@ async function runWithTimeoutRetry<T>(operation: () => Promise<T>): Promise<T> {
   throw new Error("Operation failed after timeout retries.");
 }
 
-async function deleteAuthSessionsForOrganization(organizationId: string) {
+async function deleteAuthSessionsForOrganization(
+  organizationId: string,
+  options?: {
+    preserveAuthSessionId?: string | null;
+    preserveUserId?: string | null;
+  },
+) {
   await runWithTimeoutRetry(async () => {
     const users = await prisma.user.findMany({
       where: { organizationId },
       select: { id: true },
     });
-    const userIds = users.map((user) => user.id);
+    const preserveAuthSessionId = options?.preserveAuthSessionId ?? null;
+    const preserveUserId = options?.preserveUserId ?? null;
+    const userIds = users
+      .map((user) => user.id)
+      .filter((userId) => userId !== preserveUserId);
 
+    const byOrganizationContextWhere: {
+      organizationContextId: string;
+      NOT?: { id: string };
+    } = { organizationContextId: organizationId };
+    if (preserveAuthSessionId) {
+      byOrganizationContextWhere.NOT = { id: preserveAuthSessionId };
+    }
     await prisma.authSession.deleteMany({
-      where: { organizationContextId: organizationId },
+      where: byOrganizationContextWhere,
     });
     if (userIds.length > 0) {
+      const byUserWhere: {
+        userId: { in: string[] };
+        NOT?: { id: string };
+      } = {
+        userId: { in: userIds },
+      };
+      if (preserveAuthSessionId) {
+        byUserWhere.NOT = { id: preserveAuthSessionId };
+      }
       await prisma.authSession.deleteMany({
-        where: { userId: { in: userIds } },
+        where: byUserWhere,
       });
     }
   });
@@ -214,7 +240,11 @@ export async function resetOrganizationContentAsFacilitator(input: {
     );
   }
 
-  await deleteAuthSessionsForOrganization(organization.id);
+  const preserveAuthSessionId = input.actor.authSessionId ?? null;
+  await deleteAuthSessionsForOrganization(organization.id, {
+    preserveAuthSessionId,
+    preserveUserId: input.actor.id,
+  });
 
   const now = new Date();
   await runWithTimeoutRetry(() =>
@@ -330,7 +360,10 @@ export async function resetOrganizationContentAsFacilitator(input: {
       },
     ),
   );
-  await deleteAuthSessionsForOrganization(organization.id);
+  await deleteAuthSessionsForOrganization(organization.id, {
+    preserveAuthSessionId,
+    preserveUserId: input.actor.id,
+  });
 
   await writeAuditEvent({
     eventKey: "organization.admin.reset",

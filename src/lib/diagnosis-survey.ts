@@ -613,7 +613,11 @@ function parseMultiSelectAnswer(answer: DiagnosisAnswerInput, question: Question
   const exclusiveOptions = new Set(metadata.exclusiveOptions ?? []);
   const selectedExclusive = selectedValues.filter((value) => exclusiveOptions.has(value));
   if (selectedExclusive.length > 0 && selectedValues.length > 1) {
-    throw new Error(`Question ${questionKey} has mutually exclusive options.`);
+    console.warn("[diagnosis-survey] multi-select received mutually exclusive options; preserving selection", {
+      questionKey,
+      selectedValues,
+      exclusiveOptions: Array.from(exclusiveOptions),
+    });
   }
 
   return {
@@ -691,23 +695,69 @@ type PreparedDiagnosisAnswer = {
   isNoInformation: boolean;
 };
 
-function parseMultiSelectTextValue(raw: string | null): string | null {
-  if (!raw) {
+export type GoogleSheetsAnswerInput = {
+  numericValue: number | null;
+  optionValue: string | null;
+  textValue: string | null;
+  isNoInformation: boolean;
+};
+
+function getQuestionOptionLabel(interpretationNote: string | null, optionValue: string): string {
+  const metadata = parseQuestionMetadata(interpretationNote);
+  const option = (metadata.options ?? []).find((entry) => entry.value === optionValue);
+  return option?.label ?? optionValue;
+}
+
+function formatMultiSelectAnswerForSheets(interpretationNote: string | null, rawTextValue: string | null): string | null {
+  if (!rawTextValue) {
     return null;
   }
+
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(rawTextValue);
     if (!isObject(parsed) || !Array.isArray(parsed.selectedOptions)) {
-      return raw;
+      return rawTextValue;
     }
-    const selected = parsed.selectedOptions
+
+    const selectedValues = parsed.selectedOptions
       .filter((entry): entry is string => typeof entry === "string")
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0);
-    return selected.length > 0 ? selected.join(" | ") : null;
+
+    if (selectedValues.length === 0) {
+      return null;
+    }
+
+    return selectedValues.map((value) => getQuestionOptionLabel(interpretationNote, value)).join(" | ");
   } catch {
-    return raw;
+    return rawTextValue;
   }
+}
+
+export function formatGoogleSheetsAnswerValue(
+  questionType: string,
+  interpretationNote: string | null,
+  answer: GoogleSheetsAnswerInput,
+): string | number | boolean | null {
+  if (typeof answer.numericValue === "number") {
+    return answer.numericValue;
+  }
+
+  if (answer.optionValue) {
+    return getQuestionOptionLabel(interpretationNote, answer.optionValue);
+  }
+
+  if (answer.textValue) {
+    return questionType === "multi_select"
+      ? formatMultiSelectAnswerForSheets(interpretationNote, answer.textValue)
+      : answer.textValue;
+  }
+
+  if (answer.isNoInformation) {
+    return "no_information";
+  }
+
+  return null;
 }
 
 async function syncDiagnosisSubmissionToGoogleSheets(input: {
@@ -751,19 +801,7 @@ async function syncDiagnosisSubmissionToGoogleSheets(input: {
       continue;
     }
 
-    let normalizedValue: string | number | boolean | null = null;
-    if (typeof answer.numericValue === "number") {
-      normalizedValue = answer.numericValue;
-    } else if (answer.optionValue) {
-      normalizedValue = answer.optionValue;
-    } else if (answer.textValue) {
-      normalizedValue =
-        question.questionType === "multi_select"
-          ? parseMultiSelectTextValue(answer.textValue)
-          : answer.textValue;
-    } else if (answer.isNoInformation) {
-      normalizedValue = "no_information";
-    }
+    const normalizedValue = formatGoogleSheetsAnswerValue(question.questionType, question.interpretationNote, answer);
 
     answers[question.questionKey] = normalizedValue;
 
@@ -868,6 +906,11 @@ export async function submitDiagnosisSurveyResponse(input: {
   });
 
   try {
+    console.info("[diagnosis-survey] syncing submission to Google Sheets", {
+      responseId: response.id,
+      organizationId: input.organizationId,
+      definitionVersion: definition.version,
+    });
     await syncDiagnosisSubmissionToGoogleSheets({
       responseId: response.id,
       organizationId: input.organizationId,
@@ -877,8 +920,16 @@ export async function submitDiagnosisSurveyResponse(input: {
       preparedAnswers,
       questions,
     });
+    console.info("[diagnosis-survey] Google Sheets sync finished", {
+      responseId: response.id,
+      organizationId: input.organizationId,
+    });
   } catch (error) {
-    console.error("Failed to sync diagnosis response to Google Sheets.", error);
+    console.error("Failed to sync diagnosis response to Google Sheets.", {
+      responseId: response.id,
+      organizationId: input.organizationId,
+      error,
+    });
   }
 
   return {

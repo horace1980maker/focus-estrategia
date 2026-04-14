@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   type DiagnosisAnswerInput,
+  formatGoogleSheetsAnswerValue,
   getActiveDiagnosisSurveyDefinition,
   getLatestDiagnosisSummary,
   submitDiagnosisSurveyResponse,
@@ -163,6 +164,86 @@ test("diagnosis submission persists survey version and interpretation summary", 
   } finally {
     await cleanupOrganization(organization.id);
   }
+});
+
+test("diagnosis submission preserves mutually exclusive multi-select choices without failing", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Diagnosis Multi Select Org ${id}` },
+  });
+  const user = await prisma.user.create({
+    data: {
+      email: `diagnosis-multi-${id}@example.org`,
+      name: "Diagnosis Multi User",
+      role: "ngo_admin",
+      organizationId: organization.id,
+    },
+  });
+
+  try {
+    const submitted = await submitDiagnosisSurveyResponse({
+      organizationId: organization.id,
+      submittedById: user.id,
+      answers: buildValidAnswers({
+        C2: {
+          optionValues: ["none_of_above", "no_information"],
+        },
+      }),
+    });
+
+    const saved = await prisma.diagnosisSurveyResponse.findUnique({
+      where: { id: submitted.responseId },
+      include: {
+        answers: {
+          include: { question: true },
+        },
+      },
+    });
+
+    assert.ok(saved);
+    const c2 = saved?.answers.find((answer) => answer.question.questionKey === "C2");
+    assert.ok(c2);
+    assert.equal(
+      c2?.textValue,
+      JSON.stringify({ selectedOptions: ["none_of_above", "no_information"] }),
+    );
+    assert.equal(c2?.isNoInformation, true);
+  } finally {
+    await cleanupOrganization(organization.id);
+  }
+});
+
+test("google sheets export uses spanish labels for select answers", async () => {
+  const definition = await getActiveDiagnosisSurveyDefinition();
+  const questionByKey = new Map(definition.questions.map((question) => [question.questionKey, question]));
+  const c1 = questionByKey.get("C1");
+  const c2 = questionByKey.get("C2");
+
+  if (!c1 || !c2) {
+    throw new Error("Expected C1 and C2 to exist in the active diagnosis definition.");
+  }
+
+  assert.equal(
+    formatGoogleSheetsAnswerValue(c1.questionType, c1.interpretationNote, {
+      numericValue: null,
+      optionValue: "updated_last_12m",
+      textValue: null,
+      isNoInformation: false,
+    }),
+    "Existe y fue actualizado en los ultimos 12 meses",
+  );
+
+  assert.equal(
+    formatGoogleSheetsAnswerValue(c2.questionType, c2.interpretationNote, {
+      numericValue: null,
+      optionValue: null,
+      textValue: JSON.stringify({
+        selectedOptions: ["strategic_plan_documented", "strategic_priorities_defined"],
+      }),
+      isNoInformation: false,
+    }),
+    "Plan estrategico escrito | Prioridades u objetivos estrategicos definidos",
+  );
 });
 
 test("diagnosis submission rejects invalid digital scale values", async () => {
