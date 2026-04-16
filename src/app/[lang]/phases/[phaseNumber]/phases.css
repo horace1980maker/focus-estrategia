@@ -167,6 +167,13 @@
   font: inherit;
 }
 
+.phase-review-form input {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
 .phase-review-button {
   width: fit-content;
   border: 1px solid #0f766e;
@@ -186,6 +193,37 @@
   margin: 0;
   font-size: 0.8rem;
   color: #475569;
+}
+
+.onboarding-uploader {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.onboarding-dropzone {
+  border: 1px dashed #94a3b8;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.onboarding-dropzone.dragging {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.onboarding-dropzone.disabled {
+  opacity: 0.65;
+}
+
+.onboarding-dropzone p {
+  margin: 0;
+}
+
+.onboarding-dropzone-select {
+  width: fit-content;
 }
 
 .phase-review-pending {

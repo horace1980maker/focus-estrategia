@@ -47,11 +47,12 @@ export function resolveRolePhaseAccess(
 
 export function getPhaseWorkspacePanels(phaseNumber: number) {
   return {
+    showOnboardingPanel: false,
     showDiagnosisPanel: phaseNumber === 2,
     showDraftBuilderPanel: phaseNumber === 4,
     showValidationPanel: phaseNumber === 5,
     showDeliverablesPanel: phaseNumber === 6,
     showCoachPanel: true,
-    showExampleLibraryPanel: true,
+    showExampleLibraryPanel: phaseNumber !== 1,
   };
 }

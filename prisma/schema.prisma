@@ -22,6 +22,10 @@ model Organization {
 
   users              User[]
   phaseTracker       PhaseTracker?
+  onboardingWorkspace OnboardingWorkspace?
+  onboardingEvidence OnboardingEvidence[]
+  onboardingParticipants OnboardingParticipant[]
+  facilitatorGuidance FacilitatorGuidance?
   theoryOfChange     TheoryOfChange?
   strategicObjectives StrategicObjective[]
   diagnosticFindings DiagnosticFinding[]
@@ -79,6 +83,10 @@ model User {
   draftSnapshots DraftSnapshot[] @relation("DraftSnapshotCreatedBy")
   validationFeedbackResponses ValidationFeedbackResponse[] @relation("ValidationResponseSubmittedBy")
   validationSignoffs ValidationSignoff[] @relation("ValidationSignoffSignedBy")
+  updatedOnboardingWorkspaces OnboardingWorkspace[] @relation("OnboardingWorkspaceUpdatedBy")
+  onboardingParticipants OnboardingParticipant[] @relation("OnboardingParticipantLinkedUser")
+  uploadedOnboardingEvidence OnboardingEvidence[] @relation("OnboardingEvidenceUploadedBy")
+  updatedFacilitatorGuidance FacilitatorGuidance[] @relation("FacilitatorGuidanceUpdatedBy")
 
   @@index([role, organizationId])
   @@index([organizationId, isActive])
@@ -593,4 +601,98 @@ model ValidationSignoff {
   signedBy       User?        @relation("ValidationSignoffSignedBy", fields: [signedById], references: [id])
 
   @@index([organizationId])
+}
+
+// —— Phase 1 Onboarding Workspace ——————————————————————————————————————————
+model OnboardingWorkspace {
+  id               String   @id @default(cuid())
+  organizationId   String   @unique
+  mouDocumentUrl   String?
+  documentsFolderUrl String?
+  missionStatement String?
+  visionStatement  String?
+  coreValues       String?
+  profileCompleted Boolean  @default(false)
+  commitmentsJson  String?
+  kickoffJson      String?
+  workplanJson     String?
+  calendarApproved Boolean  @default(false)
+  milestonesJson   String?
+  updatedById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  updatedBy    User?        @relation("OnboardingWorkspaceUpdatedBy", fields: [updatedById], references: [id])
+  participants OnboardingParticipant[]
+
+  @@index([organizationId, updatedAt])
+}
+
+model OnboardingParticipant {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  organizationId String
+  linkedUserId   String?
+  name           String
+  title          String?
+  email          String?
+  participantType String  @default("internal") // internal | external
+  orderIndex     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace    OnboardingWorkspace @relation(fields: [workspaceId], references: [id])
+  organization Organization        @relation(fields: [organizationId], references: [id])
+  linkedUser   User?               @relation("OnboardingParticipantLinkedUser", fields: [linkedUserId], references: [id])
+
+  @@index([workspaceId, orderIndex])
+  @@index([organizationId, participantType])
+}
+
+model OnboardingEvidence {
+  id             String   @id @default(cuid())
+  organizationId String
+  fileName       String
+  mimeType       String?
+  fileSizeBytes  Int
+  fileBytes      Bytes
+  uploadedById   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  uploadedBy   User?        @relation("OnboardingEvidenceUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model FacilitatorGuidance {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  facilitatorName String   @default("Horacio Narváez-Mena")
+  message         String?
+  updatedById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  updatedBy    User?        @relation("FacilitatorGuidanceUpdatedBy", fields: [updatedById], references: [id])
+  tasks        FacilitatorGuidanceTask[]
+
+  @@index([organizationId, updatedAt])
+}
+
+model FacilitatorGuidanceTask {
+  id         String   @id @default(cuid())
+  guidanceId String
+  status     String   @default("current") // current | pending
+  text       String
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  guidance FacilitatorGuidance @relation(fields: [guidanceId], references: [id])
+
+  @@index([guidanceId, status, orderIndex])
 }

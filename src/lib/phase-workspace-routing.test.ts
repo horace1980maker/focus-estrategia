@@ -16,7 +16,8 @@ test("parsePhaseNumber accepts numeric values and rejects invalid input", () => 
 test("workspace panel mapping is phase-specific", () => {
   assert.deepEqual(getPhaseWorkspacePanels(1), {
     showCoachPanel: true,
-    showExampleLibraryPanel: true,
+    showExampleLibraryPanel: false,
+    showOnboardingPanel: false,
     showDiagnosisPanel: false,
     showDraftBuilderPanel: false,
     showValidationPanel: false,
@@ -25,6 +26,7 @@ test("workspace panel mapping is phase-specific", () => {
   assert.deepEqual(getPhaseWorkspacePanels(2), {
     showCoachPanel: true,
     showExampleLibraryPanel: true,
+    showOnboardingPanel: false,
     showDiagnosisPanel: true,
     showDraftBuilderPanel: false,
     showValidationPanel: false,
@@ -33,6 +35,7 @@ test("workspace panel mapping is phase-specific", () => {
   assert.deepEqual(getPhaseWorkspacePanels(4), {
     showCoachPanel: true,
     showExampleLibraryPanel: true,
+    showOnboardingPanel: false,
     showDiagnosisPanel: false,
     showDraftBuilderPanel: true,
     showValidationPanel: false,
@@ -41,6 +44,7 @@ test("workspace panel mapping is phase-specific", () => {
   assert.deepEqual(getPhaseWorkspacePanels(5), {
     showCoachPanel: true,
     showExampleLibraryPanel: true,
+    showOnboardingPanel: false,
     showDiagnosisPanel: false,
     showDraftBuilderPanel: false,
     showValidationPanel: true,
@@ -49,6 +53,7 @@ test("workspace panel mapping is phase-specific", () => {
   assert.deepEqual(getPhaseWorkspacePanels(6), {
     showCoachPanel: true,
     showExampleLibraryPanel: true,
+    showOnboardingPanel: false,
     showDiagnosisPanel: false,
     showDraftBuilderPanel: false,
     showValidationPanel: false,

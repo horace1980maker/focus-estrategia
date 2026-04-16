@@ -26,7 +26,11 @@
   },
   "outputs": {
     "organization-profile": "Perfil de Organización",
+    "participants-assigned": "Participantes asignados",
+    "kickoff-checklist": "Checklist de arranque",
+    "calendar-approved": "Calendario aprobado",
     "memorandum-of-understanding": "Memorandum de Entendimiento",
+    "organization-documentation": "Documentación de la organización",
     "diagnosis-survey": "Encuesta de Diagnóstico",
     "diagnosis-synthesis": "Síntesis del Diagnóstico",
     "theory-of-change": "Teoría de Cambio",

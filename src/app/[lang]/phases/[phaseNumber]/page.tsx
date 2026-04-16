@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import DiagnosisSurveyPanel from "@/components/DiagnosisSurveyPanel";
 import DeliverablesPanel from "@/components/DeliverablesPanel";
 import DraftBuilderPanel from "@/components/DraftBuilderPanel";
+import OnboardingPanel from "@/components/OnboardingPanel";
 import ValidationPanel from "@/components/ValidationPanel";
 import PhaseCoachPanel from "@/components/PhaseCoachPanel";
 import PhasePatternDraftPad from "@/components/PhasePatternDraftPad";
@@ -307,7 +308,15 @@ export default async function PhaseWorkspacePage({
         </section>
       ) : null}
 
-      {isOrgAdmin ? (
+      {panels.showOnboardingPanel ? (
+        <OnboardingPanel
+          lang={locale}
+          organizationId={organizationId!}
+          isEditable={isOrgAdmin}
+        />
+      ) : null}
+
+      {isOrgAdmin && parsedPhaseNumber !== 1 && !panels.showOnboardingPanel ? (
         <PhasePatternDraftPad
           key={`${organizationId}-${parsedPhaseNumber}-${selectedPattern ?? "none"}-${shouldApplyPattern ? "apply" : "view"}`}
           lang={locale}

@@ -58,6 +58,17 @@ async function cleanupByOrganization(organizationId: string) {
   await prisma.activitySession.deleteMany({ where: { organizationId } });
   await prisma.sectionEngagement.deleteMany({ where: { organizationId } });
   await prisma.deliverable.deleteMany({ where: { organizationId } });
+  await prisma.onboardingEvidence.deleteMany({ where: { organizationId } });
+  await prisma.onboardingParticipant.deleteMany({ where: { organizationId } });
+  await prisma.onboardingWorkspace.deleteMany({ where: { organizationId } });
+  await prisma.facilitatorGuidanceTask.deleteMany({
+    where: {
+      guidance: {
+        organizationId,
+      },
+    },
+  });
+  await prisma.facilitatorGuidance.deleteMany({ where: { organizationId } });
   await prisma.phase.deleteMany({ where: { phaseTrackerId: { in: trackerIds } } });
   await prisma.phaseTracker.deleteMany({ where: { organizationId } });
   await prisma.phaseMigrationAudit.deleteMany({ where: { organizationId } });
@@ -67,11 +78,49 @@ async function cleanupByOrganization(organizationId: string) {
   await prisma.organization.deleteMany({ where: { id: organizationId } });
 }
 
+async function seedPhase1OnboardingRequirements(
+  organizationId: string,
+  completedById: string,
+) {
+  await prisma.onboardingWorkspace.upsert({
+    where: { organizationId },
+    create: {
+      organizationId,
+      mouDocumentUrl: `https://drive.google.com/file/d/mou-${organizationId}`,
+      updatedById: completedById,
+    },
+    update: {
+      mouDocumentUrl: `https://drive.google.com/file/d/mou-${organizationId}`,
+      updatedById: completedById,
+    },
+  });
+
+  const evidenceCount = await prisma.onboardingEvidence.count({
+    where: { organizationId },
+  });
+  if (evidenceCount === 0) {
+    await prisma.onboardingEvidence.create({
+      data: {
+        organizationId,
+        fileName: "organization-documentation.pdf",
+        mimeType: "application/pdf",
+        fileSizeBytes: 1,
+        fileBytes: Buffer.from([1]),
+        uploadedById: completedById,
+      },
+    });
+  }
+}
+
 async function completeOutputs(
   organizationId: string,
   phaseNumber: number,
   completedById: string,
 ) {
+  if (phaseNumber === 1) {
+    await seedPhase1OnboardingRequirements(organizationId, completedById);
+  }
+
   const summary = await getPhaseOutputStatus(organizationId, phaseNumber);
   for (const output of summary.missingOutputs) {
     await updatePhaseOutputStatus({

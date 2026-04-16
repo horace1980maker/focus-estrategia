@@ -1,7 +1,8 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { requestReviewAction } from "@/app/actions/phases";
 import { approvePhaseAction, rejectPhaseAction } from "@/app/actions/phases";
 import { setPhaseOutputCompletionAction } from "@/app/actions/phases";
+import { saveOnboardingWorkspaceAction } from "@/app/actions/onboarding";
 import type { Locale } from "@/i18n/config";
 import { getPhaseDescription } from "@/lib/phase-metadata";
 import { prisma } from "@/lib/prisma";
@@ -32,7 +33,10 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
   const totalPhases = getTotalPhases();
   const summary = await getPhaseOutputStatus(props.organizationId, props.phaseNumber);
   const missingCount = summary.missingOutputs.length;
+  const isPhase1 = props.phaseNumber === 1;
   const canEditPhaseOutputs = props.canEditOutputs && props.phaseStatus !== "approved";
+  const canManuallyToggleOutputs = canEditPhaseOutputs;
+  const canEditPhase1Links = isPhase1 && props.activeRole === "facilitator";
   const nextPhaseNumber =
     props.phaseNumber < totalPhases ? props.phaseNumber + 1 : null;
   const canRequestReview = props.canEditOutputs && props.phaseStatus === "in_progress";
@@ -75,9 +79,18 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
         timeStyle: "short",
       }).format(latestReview.createdAt)
     : null;
-
-  const organizationMouDownloadUrl = process.env.NEXT_PUBLIC_ORG_MOU_DOWNLOAD_URL?.trim() || "";
-  const hasOrganizationMouDownloadUrl = organizationMouDownloadUrl !== "";
+  const onboardingWorkspace =
+    props.phaseNumber === 1
+      ? await prisma.onboardingWorkspace.findUnique({
+          where: { organizationId: props.organizationId },
+          select: {
+            mouDocumentUrl: true,
+            documentsFolderUrl: true,
+          },
+        })
+      : null;
+  const organizationMouDownloadUrl = onboardingWorkspace?.mouDocumentUrl?.trim() || "";
+  const organizationDocsFolderUrl = onboardingWorkspace?.documentsFolderUrl?.trim() || "";
 
   return (
     <section className="phase-workspace-shell">
@@ -86,7 +99,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
           {props.lang === "es" ? "Espacio de trabajo de fase" : "Phase workspace"}
         </p>
         <h1>
-          {props.phaseName} · {props.lang === "es" ? "Fase" : "Phase"}{" "}
+          {props.phaseName} Â· {props.lang === "es" ? "Fase" : "Phase"}{" "}
           {props.phaseNumber}/{totalPhases}
         </h1>
         <p>{getPhaseDescription(props.phaseNumber, props.lang)}</p>
@@ -146,7 +159,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
               </p>
 
               {output.outputKey === "memorandum-of-understanding" ? (
-                hasOrganizationMouDownloadUrl ? (
+                organizationMouDownloadUrl ? (
                   <a
                     href={organizationMouDownloadUrl}
                     className="btn btn-secondary btn-sm"
@@ -159,42 +172,116 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
                     }}
                     target="_blank"
                     rel="noreferrer"
-                    download
                   >
                     <FileIcon size={14} />
                     {dict.dashboard.mou_download}
                   </a>
                 ) : (
-                  <div style={{ marginBottom: "var(--space-sm)" }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      disabled
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.45rem",
-                        width: "100%",
-                      }}
-                    >
-                      <FileIcon size={14} />
-                      {dict.dashboard.mou_download}
-                    </button>
-                    <p
-                      className="metric-sub"
-                      style={{
-                        fontSize: "var(--label-sm)",
-                        marginTop: "var(--space-xs)",
-                        color: "var(--outline)",
-                      }}
-                    >
-                      {dict.dashboard.mou_link_pending}
-                    </p>
-                  </div>
+                  <p className="phase-review-hint" style={{ marginBottom: "var(--space-sm)" }}>
+                    {canEditPhase1Links
+                      ? dict.dashboard.mou_link_pending
+                      : props.lang === "es"
+                        ? "El facilitador debe configurar este enlace."
+                        : "The facilitator must configure this link."}
+                  </p>
                 )
               ) : null}
 
-              {canEditPhaseOutputs ? (
+              {output.outputKey === "memorandum-of-understanding" && canEditPhase1Links ? (
+                <form
+                  action={async (formData: FormData) => {
+                    "use server";
+                    const result = await saveOnboardingWorkspaceAction(props.organizationId, formData);
+                    if (!result.success) {
+                      throw new Error(result.error);
+                    }
+                  }}
+                  className="phase-review-form"
+                >
+                  <label htmlFor={`phase1-mou-link-${props.organizationId}`}>
+                    {props.lang === "es" ? "Editar enlace MOU" : "Edit MOU link"}
+                  </label>
+                  <input
+                    id={`phase1-mou-link-${props.organizationId}`}
+                    name="mouDocumentUrl"
+                    type="url"
+                    defaultValue={organizationMouDownloadUrl}
+                    placeholder="https://drive.google.com/..."
+                  />
+                  <input type="hidden" name="documentsFolderUrl" value={organizationDocsFolderUrl} />
+                  <button type="submit" className="phase-output-toggle">
+                    {props.lang === "es" ? "Guardar enlace MOU" : "Save MOU link"}
+                  </button>
+                </form>
+              ) : null}
+
+              {output.outputKey === "organization-documentation" ? (
+                organizationDocsFolderUrl ? (
+                  <a
+                    href={organizationDocsFolderUrl}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      marginBottom: "var(--space-sm)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      width: "100%",
+                    }}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <FileIcon size={14} />
+                    {props.lang === "es" ? "Abrir carpeta de documentos" : "Open documents folder"}
+                  </a>
+                ) : (
+                  <p className="phase-review-hint" style={{ marginBottom: "var(--space-sm)" }}>
+                    {canEditPhase1Links
+                      ? props.lang === "es"
+                        ? "Configura la carpeta para que la ONG cargue documentación y MOU firmado."
+                        : "Configure the folder so the NGO can upload documentation and signed MOU."
+                      : props.lang === "es"
+                        ? "El facilitador debe configurar esta carpeta."
+                        : "The facilitator must configure this folder."}
+                  </p>
+                )
+              ) : null}
+
+              {output.outputKey === "organization-documentation" && organizationDocsFolderUrl ? (
+                <p className="phase-review-hint" style={{ marginBottom: "var(--space-sm)" }}>
+                  {props.lang === "es"
+                    ? "Abre la carpeta en una nueva ventana y sube ahí la documentación y el MOU firmado."
+                    : "Open the folder in a new window and upload documentation plus signed MOU there."}
+                </p>
+              ) : null}
+
+              {output.outputKey === "organization-documentation" && canEditPhase1Links ? (
+                <form
+                  action={async (formData: FormData) => {
+                    "use server";
+                    const result = await saveOnboardingWorkspaceAction(props.organizationId, formData);
+                    if (!result.success) {
+                      throw new Error(result.error);
+                    }
+                  }}
+                  className="phase-review-form"
+                >
+                  <label htmlFor={`phase1-folder-link-${props.organizationId}`}>
+                    {props.lang === "es" ? "Editar enlace de carpeta" : "Edit folder link"}
+                  </label>
+                  <input
+                    id={`phase1-folder-link-${props.organizationId}`}
+                    name="documentsFolderUrl"
+                    type="url"
+                    defaultValue={organizationDocsFolderUrl}
+                    placeholder="https://drive.google.com/drive/folders/..."
+                  />
+                  <input type="hidden" name="mouDocumentUrl" value={organizationMouDownloadUrl} />
+                  <button type="submit" className="phase-output-toggle">
+                    {props.lang === "es" ? "Guardar carpeta" : "Save folder"}
+                  </button>
+                </form>
+              ) : null}
+              {canManuallyToggleOutputs ? (
                 <form
                   action={async () => {
                     "use server";
@@ -235,8 +322,8 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
           <p className="phase-feedback-body">{feedbackText}</p>
           <p className="phase-feedback-meta">
             {props.lang === "es"
-              ? `Por ${latestReview.reviewer.name} • ${reviewDateLabel}`
-              : `By ${latestReview.reviewer.name} • ${reviewDateLabel}`}
+              ? `Por ${latestReview.reviewer.name} â€¢ ${reviewDateLabel}`
+              : `By ${latestReview.reviewer.name} â€¢ ${reviewDateLabel}`}
           </p>
         </section>
       ) : null}
@@ -249,6 +336,14 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
         ) : (
           <p className="phase-gate-ready">{getPhaseGateMessage(props.lang, missingCount)}</p>
         )}
+
+        {isPhase1 && canManuallyToggleOutputs ? (
+          <p className="phase-review-hint">
+            {props.lang === "es"
+              ? "Marca cada salida como completada cuando el MOU esté disponible y la documentación se haya cargado en Drive."
+              : "Mark each output complete once the MOU is available and documentation was uploaded in Drive."}
+          </p>
+        ) : null}
 
         {canRequestReview ? (
           <form
@@ -319,8 +414,8 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
                     className="phase-next-link"
                   >
                     {props.lang === "es"
-                      ? `${item.organizationName} · Fase ${item.phaseNumber}`
-                      : `${item.organizationName} · Phase ${item.phaseNumber}`}
+                      ? `${item.organizationName} Â· Fase ${item.phaseNumber}`
+                      : `${item.organizationName} Â· Phase ${item.phaseNumber}`}
                   </Link>
                 ))}
               </div>
@@ -421,3 +516,4 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
     </section>
   );
 }
+

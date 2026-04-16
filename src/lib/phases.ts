@@ -112,6 +112,40 @@ async function ensurePhaseTracker(organizationId: string) {
   return created;
 }
 
+export async function syncPhase1OutputsFromOnboarding(input: {
+  organizationId: string;
+  completedById?: string;
+}) {
+  void input.completedById;
+
+  const ensured = await ensurePhaseTracker(input.organizationId);
+  if (!ensured) {
+    return null;
+  }
+
+  const phase = await prisma.phase.findUnique({
+    where: {
+      phaseTrackerId_phaseNumber: {
+        phaseTrackerId: ensured.id,
+        phaseNumber: 1,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!phase) {
+    return null;
+  }
+
+  // Keep Phase 1 output rows in sync with the contract, but do not auto-complete.
+  // Completion is manual because evidence is uploaded directly in external Drive folders.
+  await getPhaseOutputSummary(phase.id, 1);
+
+  return {
+    phaseId: phase.id,
+  };
+}
+
 async function assertRequiredOutputsComplete(phase: PhaseRecord) {
   const summary = await getPhaseOutputSummary(phase.id, phase.phaseNumber);
   if (summary.missingOutputs.length > 0) {
@@ -192,6 +226,9 @@ export async function requestPhaseReview(organizationId: string, phaseNumber: nu
   if (!canRequestReview(phase.status)) {
     throw new Error(`Phase ${targetPhaseNumber} is not in progress (status: ${phase.status})`);
   }
+  if (targetPhaseNumber === 1) {
+    await syncPhase1OutputsFromOnboarding({ organizationId });
+  }
   await assertRequiredOutputsComplete(phase);
 
   return prisma.phase.update({
@@ -224,6 +261,9 @@ export async function approvePhase(
   if (!phase) throw new Error(`Phase ${targetPhaseNumber} not found`);
   if (!canApprove(phase.status)) {
     throw new Error(`Phase ${targetPhaseNumber} has not been submitted for review`);
+  }
+  if (targetPhaseNumber === 1) {
+    await syncPhase1OutputsFromOnboarding({ organizationId, completedById: reviewerId });
   }
   await assertRequiredOutputsComplete(phase);
 
@@ -344,6 +384,7 @@ export async function canAccessPhase(
   }
 
   if (normalizedTarget === TOTAL_PHASES) {
+    await syncPhase1OutputsFromOnboarding({ organizationId });
     const phases = await prisma.phase.findMany({
       where: { phaseTrackerId: tracker.id },
       orderBy: { phaseNumber: "asc" },
@@ -396,6 +437,10 @@ export async function getPhaseOutputStatus(organizationId: string, phaseNumber: 
   const phase = tracker.phases.find((p: PhaseRecord) => p.phaseNumber === targetPhaseNumber);
   if (!phase) {
     throw new Error(`Phase ${targetPhaseNumber} not found`);
+  }
+
+  if (targetPhaseNumber === 1) {
+    await syncPhase1OutputsFromOnboarding({ organizationId });
   }
 
   return getPhaseOutputSummary(phase.id, targetPhaseNumber);

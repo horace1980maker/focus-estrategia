@@ -164,6 +164,10 @@
   margin-top: var(--space-xs);
 }
 
+.facilitator-admin-guidance {
+  margin-top: var(--space-xs);
+}
+
 .facilitator-admin-warning {
   margin: 0;
   color: var(--error);

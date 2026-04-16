@@ -25,23 +25,6 @@ type ExampleSeed = {
 
 const EXAMPLE_SEEDS: ExampleSeed[] = [
   {
-    id: "phase-1-kickoff-charter",
-    phases: [1],
-    title: {
-      es: "Acta de arranque y alineacion",
-      en: "Kickoff and alignment charter",
-    },
-    description: {
-      es: "Plantilla para acordar participantes, compromisos y calendario de acompanamiento.",
-      en: "Template to align participants, commitments, and accompaniment cadence.",
-    },
-    template: {
-      es: "Objetivo de la fase\n- Resultado esperado:\n\nParticipantes clave\n- Internos:\n- Externos:\n\nCompromisos\n- Compromiso 1:\n- Compromiso 2:\n\nCalendario\n- Sesion 1:\n- Sesion 2:\n",
-      en: "Phase objective\n- Expected outcome:\n\nKey participants\n- Internal:\n- External:\n\nCommitments\n- Commitment 1:\n- Commitment 2:\n\nCalendar\n- Session 1:\n- Session 2:\n",
-    },
-    tags: ["kickoff", "alignment", "governance"],
-  },
-  {
     id: "phase-2-diagnosis-synthesis",
     phases: [2],
     title: {
@@ -128,7 +111,7 @@ const EXAMPLE_SEEDS: ExampleSeed[] = [
   },
   {
     id: "cross-phase-commitment-radar",
-    phases: [1, 2, 3, 4, 5, 6],
+    phases: [2, 3, 4, 5, 6],
     title: {
       es: "Radar de compromiso del equipo",
       en: "Team commitment radar",

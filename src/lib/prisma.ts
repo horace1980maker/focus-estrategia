@@ -44,10 +44,33 @@ const sqliteAdapter = new PrismaBetterSqlite3({
   url: resolveSqliteDatabasePath(),
 });
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function hasRequiredDelegates(client: PrismaClient | undefined): client is PrismaClient {
+  if (!client) {
+    return false;
+  }
+
+  const candidate = client as PrismaClient & {
+    organization?: unknown;
+    facilitatorGuidance?: unknown;
+    facilitatorGuidanceTask?: unknown;
+  };
+  return (
+    typeof candidate.organization !== "undefined" &&
+    typeof candidate.facilitatorGuidance !== "undefined" &&
+    typeof candidate.facilitatorGuidanceTask !== "undefined"
+  );
+}
+
+function createPrismaClient() {
+  return new PrismaClient({
     adapter: sqliteAdapter,
   });
+}
+
+const sharedClient = hasRequiredDelegates(globalForPrisma.prisma)
+  ? globalForPrisma.prisma
+  : undefined;
+
+export const prisma = sharedClient ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

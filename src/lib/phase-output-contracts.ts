@@ -7,8 +7,8 @@ export type PhaseOutputContract = {
 
 const CONTRACTS_BY_PHASE: Record<PhaseKey, PhaseOutputContract[]> = {
   onboarding: [
-    { key: "organization-profile", label: "Organization Profile" },
     { key: "memorandum-of-understanding", label: "Memorandum de Entendimiento" },
+    { key: "organization-documentation", label: "Organization Documentation" },
   ],
   diagnosis: [
     { key: "diagnosis-survey", label: "Diagnosis Survey" },

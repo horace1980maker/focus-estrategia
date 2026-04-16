@@ -26,7 +26,11 @@
   },
   "outputs": {
     "organization-profile": "Organization Profile",
+    "participants-assigned": "Participants assigned",
+    "kickoff-checklist": "Kickoff checklist",
+    "calendar-approved": "Calendar approved",
     "memorandum-of-understanding": "Memorandum de Entendimiento",
+    "organization-documentation": "Organization documentation",
     "diagnosis-survey": "Diagnosis Survey",
     "diagnosis-synthesis": "Diagnosis Synthesis",
     "theory-of-change": "Theory of Change",

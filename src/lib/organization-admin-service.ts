@@ -433,6 +433,35 @@ export async function resetOrganizationContentAsFacilitator(input: {
       where: { organizationId: organization.id },
     }),
   );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingEvidence.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingParticipant.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingWorkspace.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.facilitatorGuidanceTask.deleteMany({
+      where: {
+        guidance: {
+          organizationId: organization.id,
+        },
+      },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.facilitatorGuidance.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
 
   await runWithTimeoutRetry(() =>
     prisma.organization.update({

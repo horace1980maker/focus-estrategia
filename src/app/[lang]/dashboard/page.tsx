@@ -3,11 +3,14 @@ import { redirect } from "next/navigation";
 import { ChevronRightIcon, FileIcon, SparkleIcon } from "@/components/icons";
 import { FacilitatorAdminPanel } from "@/components/FacilitatorAdminPanel";
 import { TelemetryTracker } from "@/components/TelemetryTracker";
-import type { Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { getOrganizationMetrics } from "@/lib/analytics";
 import { buildLoginRedirectPath, buildPathWithQuery } from "@/lib/auth-routing";
 import { ROLES } from "@/lib/auth";
+import {
+  DEFAULT_FACILITATOR_NAME,
+  getOrganizationGuidance,
+} from "@/lib/facilitator-guidance-service";
 import { TOTAL_PHASES } from "@/lib/phase-model";
 import { getPhaseStatus } from "@/lib/phases";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +49,46 @@ function dedupePendingPhaseItems<T extends { organizationId: string; phaseNumber
   return Array.from(unique.values());
 }
 
+type GuidanceView = {
+  facilitatorName: string;
+  message: string;
+  currentTasks: string[];
+  pendingTasks: string[];
+  updatedAt: Date | null;
+};
+
+type GuidanceByOrganization = Record<
+  string,
+  {
+    facilitatorName: string;
+    message: string;
+    currentTasks: string[];
+    pendingTasks: string[];
+    updatedAt: string | null;
+  }
+>;
+
+type OnboardingConfigByOrganization = Record<
+  string,
+  {
+    mouDocumentUrl: string;
+    documentsFolderUrl: string;
+  }
+>;
+
+function buildFacilitatorInitials(name: string) {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter((part) => part.length > 0);
+  if (parts.length === 0) {
+    return "FH";
+  }
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return `${first}${second}`.toUpperCase() || "FH";
+}
+
 export default async function DashboardPage({
   params,
   searchParams,
@@ -70,9 +113,6 @@ export default async function DashboardPage({
   const roleContract = getRoleViewContract(session.role);
   const isFacilitator = session.role === ROLES.FACILITATOR;
   const isOrgDashboard = session.role === ROLES.NGO_ADMIN;
-  const organizationMouDownloadUrl =
-    process.env.NEXT_PUBLIC_ORG_MOU_DOWNLOAD_URL?.trim() || "";
-  const hasOrganizationMouDownloadUrl = organizationMouDownloadUrl !== "";
   const showPendingQueue = getQueryValue(query.queue) === "pending";
 
   const [organization, phaseStatus, facilitatorAdminOrganizations] = await Promise.all([
@@ -90,6 +130,73 @@ export default async function DashboardPage({
         })
       : Promise.resolve([] as Array<{ id: string; name: string }>),
   ]);
+
+  const emptyGuidance: GuidanceView = {
+    facilitatorName: DEFAULT_FACILITATOR_NAME,
+    message: "",
+    currentTasks: [],
+    pendingTasks: [],
+    updatedAt: null,
+  };
+  const organizationGuidance = session.organizationId
+    ? await getOrganizationGuidance({
+        session,
+        organizationId: session.organizationId,
+      }).catch(() => emptyGuidance)
+    : emptyGuidance;
+
+  const facilitatorGuidanceByOrganization: GuidanceByOrganization = {};
+  const onboardingConfigByOrganization: OnboardingConfigByOrganization = {};
+  if (roleContract.canAdministerOrganizations) {
+    const [guidanceRecords, onboardingRecords] = await Promise.all([
+      prisma.facilitatorGuidance.findMany({
+        where: {
+          organizationId: {
+            in: facilitatorAdminOrganizations.map((organization) => organization.id),
+          },
+        },
+        include: {
+          tasks: {
+            orderBy: [{ status: "asc" }, { orderIndex: "asc" }, { createdAt: "asc" }],
+          },
+        },
+      }),
+      prisma.onboardingWorkspace.findMany({
+        where: {
+          organizationId: {
+            in: facilitatorAdminOrganizations.map((organization) => organization.id),
+          },
+        },
+        select: {
+          organizationId: true,
+          mouDocumentUrl: true,
+          documentsFolderUrl: true,
+        },
+      }),
+    ]);
+
+    for (const organization of facilitatorAdminOrganizations) {
+      const guidance = guidanceRecords.find((record) => record.organizationId === organization.id);
+      const onboarding = onboardingRecords.find((record) => record.organizationId === organization.id);
+      facilitatorGuidanceByOrganization[organization.id] = {
+        facilitatorName: guidance?.facilitatorName || DEFAULT_FACILITATOR_NAME,
+        message: guidance?.message ?? "",
+        currentTasks:
+          guidance?.tasks
+            .filter((task) => task.status === "current")
+            .map((task) => task.text) ?? [],
+        pendingTasks:
+          guidance?.tasks
+            .filter((task) => task.status === "pending")
+            .map((task) => task.text) ?? [],
+        updatedAt: guidance?.updatedAt.toISOString() ?? null,
+      };
+      onboardingConfigByOrganization[organization.id] = {
+        mouDocumentUrl: onboarding?.mouDocumentUrl ?? "",
+        documentsFolderUrl: onboarding?.documentsFolderUrl ?? "",
+      };
+    }
+  }
 
   let metricsError: string | null = null;
   let organizationMetrics: Awaited<ReturnType<typeof getOrganizationMetrics>> | null = null;
@@ -181,34 +288,39 @@ export default async function DashboardPage({
         : "Last 30 days.";
 
   const ngoTasks = [
-    {
-      id: "1",
-      text:
-        lang === "es"
-          ? "Completar evaluacion de coherencia estrategica"
-          : "Complete strategic coherence assessment",
+    ...organizationGuidance.currentTasks.map((text, index) => ({
+      id: `current-${index + 1}`,
+      text,
       done: false,
-      due: "Apr 5",
-    },
-    {
-      id: "2",
-      text:
-        lang === "es"
-          ? "Cargar documentos de evidencia"
-          : "Upload evidence documents",
+      due: lang === "es" ? "Actual" : "Current",
+    })),
+    ...organizationGuidance.pendingTasks.map((text, index) => ({
+      id: `pending-${index + 1}`,
+      text,
       done: false,
-      due: "Apr 7",
-    },
-    {
-      id: "3",
-      text:
-        lang === "es"
-          ? "Responder cuestionario de capacidades"
-          : "Complete capabilities questionnaire",
-      done: false,
-      due: "Apr 8",
-    },
+      due: lang === "es" ? "Pendiente" : "Pending",
+    })),
   ];
+
+  if (ngoTasks.length === 0) {
+    ngoTasks.push({
+      id: "guidance-empty",
+      text:
+        lang === "es"
+          ? "Tu facilitador actualizara aqui las prioridades de esta fase."
+          : "Your facilitator will update phase priorities here.",
+      done: false,
+      due: lang === "es" ? "Por definir" : "TBD",
+    });
+  }
+
+  const facilitatorNoteDate = organizationGuidance.updatedAt
+    ? new Intl.DateTimeFormat(lang === "es" ? "es-GT" : "en-US", {
+        dateStyle: "medium",
+      }).format(organizationGuidance.updatedAt)
+    : lang === "es"
+      ? "Sin actualizar"
+      : "Not updated";
 
   const scorecardItems = isFacilitator
     ? [
@@ -372,6 +484,8 @@ export default async function DashboardPage({
         <FacilitatorAdminPanel
           lang={lang === "es" ? "es" : "en"}
           organizations={facilitatorAdminOrganizations}
+          guidanceByOrganization={facilitatorGuidanceByOrganization}
+          onboardingConfigByOrganization={onboardingConfigByOrganization}
         />
       ) : null}
 
@@ -474,19 +588,18 @@ export default async function DashboardPage({
           {!isFacilitator ? (
             <div className="facilitator-note">
               <div className="facilitator-note-header">
-                <div className="facilitator-avatar">MR</div>
-                <span className="facilitator-name">Maria Rodriguez</span>
-                <span className="facilitator-date">1 Apr 2026</span>
+                <div className="facilitator-avatar">
+                  {buildFacilitatorInitials(organizationGuidance.facilitatorName)}
+                </div>
+                <span className="facilitator-name">{organizationGuidance.facilitatorName}</span>
+                <span className="facilitator-date">{facilitatorNoteDate}</span>
               </div>
               <p>
-                {lang === "es"
-                  ? "Excelente avance en la alineacion del equipo. Para la proxima sesion, enfoquense en completar la evaluacion de coherencia estrategica y cargar evidencias."
-                  : "Excellent progress in team alignment. Next session: complete coherence assessment and upload evidence."}
-              </p>
-              <p className="metric-sub" style={{ marginTop: "var(--space-sm)" }}>
-                {lang === "es"
-                  ? `Prioriza secciones con baja actividad y tareas pendientes para sostener el avance.`
-                  : `Prioritize low-activity sections and pending tasks to sustain momentum.`}
+                {organizationGuidance.message.length > 0
+                  ? organizationGuidance.message
+                  : lang === "es"
+                    ? "Tu facilitador compartira aqui el mensaje de seguimiento para esta fase."
+                    : "Your facilitator will share phase follow-up guidance here."}
               </p>
             </div>
           ) : null}
