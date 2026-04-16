@@ -8,6 +8,14 @@ type OrganizationOption = {
   name: string;
 };
 
+type UserOption = {
+  id: string;
+  name: string;
+  username: string | null;
+  role: string;
+  organizationId: string | null;
+};
+
 type OrganizationGuidance = {
   facilitatorName: string;
   message: string;
@@ -16,16 +24,11 @@ type OrganizationGuidance = {
   updatedAt: string | null;
 };
 
-type OrganizationOnboardingConfig = {
-  mouDocumentUrl: string;
-  documentsFolderUrl: string;
-};
-
 type FacilitatorAdminPanelProps = {
   lang: "es" | "en";
   organizations: OrganizationOption[];
+  users: UserOption[];
   guidanceByOrganization: Record<string, OrganizationGuidance>;
-  onboardingConfigByOrganization: Record<string, OrganizationOnboardingConfig>;
   strategicCoachVisible: boolean;
   exampleLibraryVisible: boolean;
   workingDraftVisible: boolean;
@@ -67,13 +70,6 @@ const COPY = {
     guidancePending: "Tareas pendientes (una por linea)",
     guidanceSubmit: "Guardar mensaje y tareas",
     successGuidance: "Mensaje y tareas actualizados.",
-    onboardingTitle: "Configuracion Fase 1 (MOU y documentacion)",
-    onboardingSubtitle:
-      "Define el enlace al MOU y la carpeta de Google Drive donde se cargara la documentacion.",
-    onboardingMou: "Enlace MOU (Google Drive / Docs)",
-    onboardingFolder: "Carpeta de documentacion (Google Drive)",
-    onboardingSubmit: "Guardar enlaces de Fase 1",
-    successOnboarding: "Enlaces de Fase 1 actualizados.",
     coachToggleTitle: "Visibilidad de Acompañante estratégico",
     coachToggleSubtitle:
       "Controla si la sección de Acompañante estratégico se muestra en dashboards y fases de todas las organizaciones.",
@@ -92,6 +88,20 @@ const COPY = {
     workingDraftToggleLabel: "Mostrar seccion Borrador de trabajo",
     workingDraftToggleSubmit: "Guardar visibilidad",
     successWorkingDraftToggle: "Visibilidad de Borrador de trabajo actualizada.",
+    removeUserTitle: "Eliminar usuario",
+    removeUserSubtitle:
+      'Desactiva y elimina acceso de un usuario de organizacion. Escribe "DELETE" para confirmar.',
+    removeUserSelect: "Usuario",
+    removeUserConfirmLabel: 'Confirmacion (escribe "DELETE")',
+    removeUserSubmit: "Eliminar usuario",
+    successRemoveUser: "Usuario eliminado correctamente.",
+    removeOrganizationTitle: "Eliminar organizacion",
+    removeOrganizationWarning:
+      'Esta accion elimina la organizacion del sistema y desactiva sus usuarios. Escribe "DELETE" para confirmar.',
+    removeOrganizationConfirmLabel: 'Confirmacion (escribe "DELETE")',
+    removeOrganizationSubmit: "Eliminar organizacion",
+    successRemoveOrganization: "Organizacion eliminada correctamente.",
+    noUsers: "No hay usuarios en la organizacion seleccionada.",
     successCreate: "Organizacion creada correctamente.",
     successProvision: "Credenciales provisionadas correctamente.",
     successReset: "Contenido de la organizacion restablecido.",
@@ -128,13 +138,6 @@ const COPY = {
     guidancePending: "Pending tasks (one per line)",
     guidanceSubmit: "Save message and tasks",
     successGuidance: "Message and tasks updated.",
-    onboardingTitle: "Phase 1 configuration (MOU and documentation)",
-    onboardingSubtitle:
-      "Set the MOU link and the Google Drive folder where documentation files will be uploaded.",
-    onboardingMou: "MOU link (Google Drive / Docs)",
-    onboardingFolder: "Documentation folder (Google Drive)",
-    onboardingSubmit: "Save Phase 1 links",
-    successOnboarding: "Phase 1 links updated.",
     coachToggleTitle: "Strategic coach visibility",
     coachToggleSubtitle:
       "Control whether the strategic coach section appears across all organization dashboards and phases.",
@@ -153,6 +156,20 @@ const COPY = {
     workingDraftToggleLabel: "Show Working draft section",
     workingDraftToggleSubmit: "Save visibility",
     successWorkingDraftToggle: "Working draft visibility updated.",
+    removeUserTitle: "Remove user",
+    removeUserSubtitle:
+      'Disable and remove access for an organization user. Type "DELETE" to confirm.',
+    removeUserSelect: "User",
+    removeUserConfirmLabel: 'Confirmation (type "DELETE")',
+    removeUserSubmit: "Remove user",
+    successRemoveUser: "User removed successfully.",
+    removeOrganizationTitle: "Remove organization",
+    removeOrganizationWarning:
+      'This action removes the organization from the system and deactivates its users. Type "DELETE" to confirm.',
+    removeOrganizationConfirmLabel: 'Confirmation (type "DELETE")',
+    removeOrganizationSubmit: "Remove organization",
+    successRemoveOrganization: "Organization removed successfully.",
+    noUsers: "No users available in the selected organization.",
     successCreate: "Organization created successfully.",
     successProvision: "Credentials provisioned successfully.",
     successReset: "Organization content reset successfully.",
@@ -178,8 +195,8 @@ function toErrorMessage(copy: FacilitatorAdminCopy, payload: unknown): string {
 export function FacilitatorAdminPanel({
   lang,
   organizations: initialOrganizations,
+  users: initialUsers,
   guidanceByOrganization: initialGuidanceByOrganization,
-  onboardingConfigByOrganization: initialOnboardingConfigByOrganization,
   strategicCoachVisible: initialStrategicCoachVisible,
   exampleLibraryVisible: initialExampleLibraryVisible,
   workingDraftVisible: initialWorkingDraftVisible,
@@ -188,12 +205,10 @@ export function FacilitatorAdminPanel({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [organizations, setOrganizations] = useState<OrganizationOption[]>(initialOrganizations);
+  const [users, setUsers] = useState<UserOption[]>(initialUsers);
   const [guidanceByOrganization, setGuidanceByOrganization] = useState<
     Record<string, OrganizationGuidance>
   >(initialGuidanceByOrganization);
-  const [onboardingConfigByOrganization, setOnboardingConfigByOrganization] = useState<
-    Record<string, OrganizationOnboardingConfig>
-  >(initialOnboardingConfigByOrganization);
   const [strategicCoachVisible, setStrategicCoachVisible] = useState<boolean>(
     initialStrategicCoachVisible,
   );
@@ -222,10 +237,28 @@ export function FacilitatorAdminPanel({
   );
   const [guidanceOrganizationId, setGuidanceOrganizationId] =
     useState<string>(defaultOrganizationId);
-  const [onboardingOrganizationId, setOnboardingOrganizationId] =
+  const [removeUserOrganizationId, setRemoveUserOrganizationId] =
     useState<string>(defaultOrganizationId);
+  const [removeOrganizationId, setRemoveOrganizationId] =
+    useState<string>(defaultOrganizationId);
+  const usersByOrganization = useMemo(
+    () =>
+      users.filter(
+        (user) =>
+          user.organizationId !== null &&
+          uniqueOrganizations.some((organization) => organization.id === user.organizationId),
+      ),
+    [users, uniqueOrganizations],
+  );
+  const selectableUsers = useMemo(
+    () =>
+      usersByOrganization.filter(
+        (user) => user.organizationId === (removeUserOrganizationId || defaultOrganizationId),
+      ),
+    [defaultOrganizationId, removeUserOrganizationId, usersByOrganization],
+  );
+  const [removeUserId, setRemoveUserId] = useState<string>(selectableUsers[0]?.id ?? "");
   const selectedGuidanceOrganizationId = guidanceOrganizationId || defaultOrganizationId;
-  const selectedOnboardingOrganizationId = onboardingOrganizationId || defaultOrganizationId;
   useEffect(() => {
     if (!guidanceOrganizationId && defaultOrganizationId) {
       setGuidanceOrganizationId(defaultOrganizationId);
@@ -233,10 +266,24 @@ export function FacilitatorAdminPanel({
   }, [defaultOrganizationId, guidanceOrganizationId]);
 
   useEffect(() => {
-    if (!onboardingOrganizationId && defaultOrganizationId) {
-      setOnboardingOrganizationId(defaultOrganizationId);
+    if (!removeUserOrganizationId && defaultOrganizationId) {
+      setRemoveUserOrganizationId(defaultOrganizationId);
     }
-  }, [defaultOrganizationId, onboardingOrganizationId]);
+  }, [defaultOrganizationId, removeUserOrganizationId]);
+  useEffect(() => {
+    if (!removeOrganizationId && defaultOrganizationId) {
+      setRemoveOrganizationId(defaultOrganizationId);
+    }
+  }, [defaultOrganizationId, removeOrganizationId]);
+  useEffect(() => {
+    if (selectableUsers.length === 0) {
+      setRemoveUserId("");
+      return;
+    }
+    if (!selectableUsers.some((user) => user.id === removeUserId)) {
+      setRemoveUserId(selectableUsers[0]?.id ?? "");
+    }
+  }, [removeUserId, selectableUsers]);
   const selectedGuidance =
     guidanceByOrganization[selectedGuidanceOrganizationId] ?? {
       facilitatorName: lang === "es" ? "Horacio Narváez-Mena" : "Horacio Narváez-Mena",
@@ -244,11 +291,6 @@ export function FacilitatorAdminPanel({
       currentTasks: [],
       pendingTasks: [],
       updatedAt: null,
-    };
-  const selectedOnboardingConfig =
-    onboardingConfigByOrganization[selectedOnboardingOrganizationId] ?? {
-      mouDocumentUrl: "",
-      documentsFolderUrl: "",
     };
 
   return (
@@ -314,18 +356,14 @@ export function FacilitatorAdminPanel({
                   updatedAt: null,
                 },
               }));
-              setOnboardingConfigByOrganization((previous) => ({
-                ...previous,
-                [createdOrganization.id]: {
-                  mouDocumentUrl: "",
-                  documentsFolderUrl: "",
-                },
-              }));
               if (!guidanceOrganizationId) {
                 setGuidanceOrganizationId(createdOrganization.id);
               }
-              if (!onboardingOrganizationId) {
-                setOnboardingOrganizationId(createdOrganization.id);
+              if (!removeUserOrganizationId) {
+                setRemoveUserOrganizationId(createdOrganization.id);
+              }
+              if (!removeOrganizationId) {
+                setRemoveOrganizationId(createdOrganization.id);
               }
               form.reset();
               setStatus({ type: "success", message: copy.successCreate });
@@ -376,14 +414,31 @@ export function FacilitatorAdminPanel({
                   mustChangePassword,
                 }),
               });
-              const payload = (await response.json()) as { error?: string } | undefined;
-              if (!response.ok) {
+              const payload = (await response.json()) as
+                | {
+                    user?: {
+                      id: string;
+                      name: string;
+                      username: string | null;
+                      role: string;
+                      organizationId: string | null;
+                    };
+                    error?: string;
+                  }
+                | undefined;
+              if (!response.ok || !payload?.user) {
                 setStatus({ type: "error", message: toErrorMessage(copy, payload) });
                 return;
               }
 
+              setUsers((previous) =>
+                [...previous.filter((user) => user.id !== payload.user!.id), payload.user!].sort(
+                  (left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }),
+                ),
+              );
               form.reset();
               setStatus({ type: "success", message: copy.successProvision });
+              router.refresh();
             });
           }}
         >
@@ -429,10 +484,9 @@ export function FacilitatorAdminPanel({
           </button>
           {!hasOrganizations ? <p className="metric-sub">{copy.noOrganizations}</p> : null}
         </form>
-      </div>
 
       <form
-        className="facilitator-admin-card facilitator-admin-guidance"
+        className="facilitator-admin-card facilitator-admin-guidance facilitator-admin-card-wide"
         key={`guidance-${selectedGuidanceOrganizationId}-${selectedGuidance.updatedAt ?? "none"}`}
         onSubmit={(event) => {
           event.preventDefault();
@@ -485,7 +539,7 @@ export function FacilitatorAdminPanel({
         }}
       >
         <h4>{copy.guidanceTitle}</h4>
-        <p className="metric-sub">{copy.guidanceSubtitle}</p>
+        <p className="facilitator-admin-card-subtitle">{copy.guidanceSubtitle}</p>
         <label>
           <span>{copy.organization}</span>
           <select
@@ -554,101 +608,7 @@ export function FacilitatorAdminPanel({
       </form>
 
       <form
-        className="facilitator-admin-card facilitator-admin-guidance"
-        key={`onboarding-${selectedOnboardingOrganizationId}-${selectedOnboardingConfig.mouDocumentUrl}-${selectedOnboardingConfig.documentsFolderUrl}`}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const formData = new FormData(form);
-          const organizationId = String(formData.get("organizationId") ?? "").trim();
-          const mouDocumentUrl = String(formData.get("mouDocumentUrl") ?? "").trim();
-          const documentsFolderUrl = String(formData.get("documentsFolderUrl") ?? "").trim();
-
-          startTransition(async () => {
-            const response = await fetch(
-              `/api/admin/organizations/${organizationId}/onboarding-config`,
-              {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  mouDocumentUrl,
-                  documentsFolderUrl,
-                }),
-              },
-            );
-            const payload = (await response.json()) as
-              | {
-                  onboardingConfig?: OrganizationOnboardingConfig;
-                  error?: string;
-                }
-              | undefined;
-
-            if (!response.ok || !payload?.onboardingConfig) {
-              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
-              return;
-            }
-
-            setOnboardingOrganizationId(organizationId);
-            setOnboardingConfigByOrganization((previous) => ({
-              ...previous,
-              [organizationId]: payload.onboardingConfig!,
-            }));
-            setStatus({ type: "success", message: copy.successOnboarding });
-            router.refresh();
-          });
-        }}
-      >
-        <h4>{copy.onboardingTitle}</h4>
-        <p className="metric-sub">{copy.onboardingSubtitle}</p>
-        <label>
-          <span>{copy.organization}</span>
-          <select
-            name="organizationId"
-            className="input"
-            value={selectedOnboardingOrganizationId}
-            onChange={(event) => setOnboardingOrganizationId(event.target.value)}
-            required
-            disabled={!hasOrganizations}
-          >
-            {uniqueOrganizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>{copy.onboardingMou}</span>
-          <input
-            name="mouDocumentUrl"
-            className="input"
-            type="url"
-            defaultValue={selectedOnboardingConfig.mouDocumentUrl}
-            disabled={!hasOrganizations}
-          />
-        </label>
-        <label>
-          <span>{copy.onboardingFolder}</span>
-          <input
-            name="documentsFolderUrl"
-            className="input"
-            type="url"
-            defaultValue={selectedOnboardingConfig.documentsFolderUrl}
-            disabled={!hasOrganizations}
-          />
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={isPending || !hasOrganizations}
-        >
-          {copy.onboardingSubmit}
-        </button>
-        {!hasOrganizations ? <p className="metric-sub">{copy.noOrganizations}</p> : null}
-      </form>
-
-      <form
-        className="facilitator-admin-card facilitator-admin-guidance"
+        className="facilitator-admin-card facilitator-admin-guidance facilitator-admin-toggle-card"
         onSubmit={(event) => {
           event.preventDefault();
           startTransition(async () => {
@@ -673,23 +633,30 @@ export function FacilitatorAdminPanel({
         }}
       >
         <h4>{copy.coachToggleTitle}</h4>
-        <p className="metric-sub">{copy.coachToggleSubtitle}</p>
-        <label className="facilitator-admin-checkbox">
-          <input
-            type="checkbox"
-            checked={strategicCoachVisible}
-            onChange={(event) => setStrategicCoachVisible(event.currentTarget.checked)}
+        <p className="facilitator-admin-card-subtitle">{copy.coachToggleSubtitle}</p>
+        <div className="facilitator-admin-toggle-row">
+          <label className="facilitator-admin-checkbox facilitator-admin-toggle-switch">
+            <input
+              className="facilitator-admin-toggle-input"
+              type="checkbox"
+              checked={strategicCoachVisible}
+              onChange={(event) => setStrategicCoachVisible(event.currentTarget.checked)}
+              disabled={isPending}
+            />
+            <span>{copy.coachToggleLabel}</span>
+          </label>
+          <button
+            type="submit"
+            className="btn btn-primary facilitator-admin-toggle-button"
             disabled={isPending}
-          />
-          <span>{copy.coachToggleLabel}</span>
-        </label>
-        <button type="submit" className="btn btn-primary" disabled={isPending}>
-          {copy.coachToggleSubmit}
-        </button>
+          >
+            {copy.coachToggleSubmit}
+          </button>
+        </div>
       </form>
 
       <form
-        className="facilitator-admin-card facilitator-admin-guidance"
+        className="facilitator-admin-card facilitator-admin-guidance facilitator-admin-toggle-card"
         onSubmit={(event) => {
           event.preventDefault();
           startTransition(async () => {
@@ -714,23 +681,30 @@ export function FacilitatorAdminPanel({
         }}
       >
         <h4>{copy.exampleLibraryToggleTitle}</h4>
-        <p className="metric-sub">{copy.exampleLibraryToggleSubtitle}</p>
-        <label className="facilitator-admin-checkbox">
-          <input
-            type="checkbox"
-            checked={exampleLibraryVisible}
-            onChange={(event) => setExampleLibraryVisible(event.currentTarget.checked)}
+        <p className="facilitator-admin-card-subtitle">{copy.exampleLibraryToggleSubtitle}</p>
+        <div className="facilitator-admin-toggle-row">
+          <label className="facilitator-admin-checkbox facilitator-admin-toggle-switch">
+            <input
+              className="facilitator-admin-toggle-input"
+              type="checkbox"
+              checked={exampleLibraryVisible}
+              onChange={(event) => setExampleLibraryVisible(event.currentTarget.checked)}
+              disabled={isPending}
+            />
+            <span>{copy.exampleLibraryToggleLabel}</span>
+          </label>
+          <button
+            type="submit"
+            className="btn btn-primary facilitator-admin-toggle-button"
             disabled={isPending}
-          />
-          <span>{copy.exampleLibraryToggleLabel}</span>
-        </label>
-        <button type="submit" className="btn btn-primary" disabled={isPending}>
-          {copy.exampleLibraryToggleSubmit}
-        </button>
+          >
+            {copy.exampleLibraryToggleSubmit}
+          </button>
+        </div>
       </form>
 
       <form
-        className="facilitator-admin-card facilitator-admin-guidance"
+        className="facilitator-admin-card facilitator-admin-guidance facilitator-admin-toggle-card"
         onSubmit={(event) => {
           event.preventDefault();
           startTransition(async () => {
@@ -755,23 +729,200 @@ export function FacilitatorAdminPanel({
         }}
       >
         <h4>{copy.workingDraftToggleTitle}</h4>
-        <p className="metric-sub">{copy.workingDraftToggleSubtitle}</p>
-        <label className="facilitator-admin-checkbox">
-          <input
-            type="checkbox"
-            checked={workingDraftVisible}
-            onChange={(event) => setWorkingDraftVisible(event.currentTarget.checked)}
+        <p className="facilitator-admin-card-subtitle">{copy.workingDraftToggleSubtitle}</p>
+        <div className="facilitator-admin-toggle-row">
+          <label className="facilitator-admin-checkbox facilitator-admin-toggle-switch">
+            <input
+              className="facilitator-admin-toggle-input"
+              type="checkbox"
+              checked={workingDraftVisible}
+              onChange={(event) => setWorkingDraftVisible(event.currentTarget.checked)}
+              disabled={isPending}
+            />
+            <span>{copy.workingDraftToggleLabel}</span>
+          </label>
+          <button
+            type="submit"
+            className="btn btn-primary facilitator-admin-toggle-button"
             disabled={isPending}
-          />
-          <span>{copy.workingDraftToggleLabel}</span>
+          >
+            {copy.workingDraftToggleSubmit}
+          </button>
+        </div>
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-reset facilitator-admin-danger-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const formData = new FormData(form);
+          const userId = String(formData.get("userId") ?? "").trim();
+          const confirmationText = String(formData.get("confirmationText") ?? "");
+
+          startTransition(async () => {
+            const response = await fetch(`/api/auth/users/${userId}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ confirmationText }),
+            });
+            const payload = (await response.json()) as { error?: string } | undefined;
+            if (!response.ok) {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            const removedUser =
+              users.find((user) => user.id === userId)?.name ??
+              users.find((user) => user.id === userId)?.username ??
+              userId;
+            setUsers((previous) => previous.filter((user) => user.id !== userId));
+            form.reset();
+            setStatus({
+              type: "success",
+              message: `${copy.successRemoveUser} (${removedUser})`,
+            });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.removeUserTitle}</h4>
+        <p className="facilitator-admin-warning">{copy.removeUserSubtitle}</p>
+        <label>
+          <span>{copy.organization}</span>
+          <select
+            name="organizationId"
+            className="input"
+            value={removeUserOrganizationId}
+            onChange={(event) => setRemoveUserOrganizationId(event.target.value)}
+            required
+            disabled={!hasOrganizations}
+          >
+            {uniqueOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
         </label>
-        <button type="submit" className="btn btn-primary" disabled={isPending}>
-          {copy.workingDraftToggleSubmit}
+        <label>
+          <span>{copy.removeUserSelect}</span>
+          <select
+            name="userId"
+            className="input"
+            value={removeUserId}
+            onChange={(event) => setRemoveUserId(event.target.value)}
+            required
+            disabled={selectableUsers.length === 0}
+          >
+            {selectableUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name} ({user.username ?? user.id})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{copy.removeUserConfirmLabel}</span>
+          <input name="confirmationText" className="input" required />
+        </label>
+        <button
+          type="submit"
+          className="btn btn-primary facilitator-admin-reset-button"
+          disabled={isPending || selectableUsers.length === 0}
+        >
+          {copy.removeUserSubmit}
+        </button>
+        {selectableUsers.length === 0 ? <p className="metric-sub">{copy.noUsers}</p> : null}
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-reset facilitator-admin-danger-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const formData = new FormData(form);
+          const organizationId = String(formData.get("organizationId") ?? "").trim();
+          const confirmationText = String(formData.get("confirmationText") ?? "");
+
+          startTransition(async () => {
+            const response = await fetch(`/api/admin/organizations/${organizationId}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ confirmationText }),
+            });
+            const payload = (await response.json()) as { error?: string } | undefined;
+            if (!response.ok) {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            const removedOrganization =
+              organizations.find((organization) => organization.id === organizationId)?.name ??
+              organizationId;
+            setOrganizations((previous) =>
+              previous.filter((organization) => organization.id !== organizationId),
+            );
+            setUsers((previous) =>
+              previous.filter((user) => user.organizationId !== organizationId),
+            );
+            setGuidanceByOrganization((previous) => {
+              const next = { ...previous };
+              delete next[organizationId];
+              return next;
+            });
+            if (guidanceOrganizationId === organizationId) {
+              setGuidanceOrganizationId("");
+            }
+            if (removeUserOrganizationId === organizationId) {
+              setRemoveUserOrganizationId("");
+            }
+            if (removeOrganizationId === organizationId) {
+              setRemoveOrganizationId("");
+            }
+            form.reset();
+            setStatus({
+              type: "success",
+              message: `${copy.successRemoveOrganization} (${removedOrganization})`,
+            });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.removeOrganizationTitle}</h4>
+        <p className="facilitator-admin-warning">{copy.removeOrganizationWarning}</p>
+        <label>
+          <span>{copy.organization}</span>
+          <select
+            name="organizationId"
+            className="input"
+            value={removeOrganizationId}
+            onChange={(event) => setRemoveOrganizationId(event.target.value)}
+            required
+            disabled={!hasOrganizations}
+          >
+            {uniqueOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{copy.removeOrganizationConfirmLabel}</span>
+          <input name="confirmationText" className="input" required />
+        </label>
+        <button
+          type="submit"
+          className="btn btn-primary facilitator-admin-reset-button"
+          disabled={isPending || !hasOrganizations}
+        >
+          {copy.removeOrganizationSubmit}
         </button>
       </form>
 
       <form
-        className="facilitator-admin-card facilitator-admin-reset"
+        className="facilitator-admin-card facilitator-admin-reset facilitator-admin-danger-card"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -833,6 +984,7 @@ export function FacilitatorAdminPanel({
           {copy.resetSubmit}
         </button>
       </form>
+      </div>
     </section>
   );
 }

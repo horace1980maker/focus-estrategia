@@ -5,6 +5,8 @@ import { TOTAL_PHASES, phaseNumberToKey } from "./phase-model";
 import { requireRole } from "./access-guards";
 
 export const ORGANIZATION_RESET_CONFIRMATION = "RESET";
+export const ORGANIZATION_DELETE_CONFIRMATION = "DELETE";
+export const USER_DELETE_CONFIRMATION = "DELETE";
 
 export class OrganizationAdminServiceError extends Error {
   status: 400 | 403 | 404 | 409;
@@ -163,6 +165,101 @@ async function assertFacilitatorActor(actor: UserSession, reason: string) {
       targetEntityType: "organization",
     },
   });
+}
+
+function buildDeletedIdentity(input: {
+  id: string;
+  username: string | null;
+  name: string;
+}) {
+  const timestamp = Date.now();
+  const suffix = `${timestamp}-${input.id.slice(-6)}`;
+  const username = input.username ? `${input.username}__deleted__${suffix}` : null;
+  const email = `deleted+${suffix}@deleted.local`;
+  const name = `${input.name} (deleted)`;
+  return {
+    username,
+    email,
+    name,
+  };
+}
+
+async function retireUserAccount(input: {
+  actor: UserSession;
+  userId: string;
+  reason: "manual_user_remove" | "organization_remove";
+}) {
+  const user = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: {
+      id: true,
+      role: true,
+      organizationId: true,
+      email: true,
+      username: true,
+      name: true,
+      isActive: true,
+    },
+  });
+  if (!user) {
+    throw new OrganizationAdminServiceError("User not found.", "USER_NOT_FOUND", 404);
+  }
+
+  const deletedIdentity = buildDeletedIdentity({
+    id: user.id,
+    username: user.username ?? null,
+    name: user.name,
+  });
+
+  await runWithTimeoutRetry(() =>
+    prisma.authSession.deleteMany({
+      where: { userId: user.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isActive: false,
+        mustChangePassword: false,
+        passwordHash: null,
+        passwordVersion: { increment: 1 },
+        failedLoginAttempts: 0,
+        lastFailedLoginAt: null,
+        lockedUntil: null,
+        organizationId: null,
+        username: deletedIdentity.username,
+        email: deletedIdentity.email,
+        name: deletedIdentity.name,
+      },
+    }),
+  );
+
+  await writeAuditEvent({
+    eventKey:
+      input.reason === "manual_user_remove"
+        ? "organization.admin.user.removed"
+        : "organization.admin.user.retired",
+    eventType: "ops",
+    actorId: input.actor.id,
+    actorRole: input.actor.role,
+    organizationId: user.organizationId,
+    targetEntityType: "user",
+    targetEntityId: user.id,
+    metadata: {
+      previousRole: user.role,
+      previousOrganizationId: user.organizationId,
+      wasActive: user.isActive,
+      reason: input.reason,
+      source: "facilitator_dashboard",
+    },
+  });
+
+  return {
+    id: user.id,
+    previousOrganizationId: user.organizationId,
+    previousRole: user.role,
+  };
 }
 
 export async function createOrganizationAsFacilitator(input: {
@@ -549,5 +646,278 @@ export async function resetOrganizationContentAsFacilitator(input: {
   return {
     organizationId: organization.id,
     resetAt: now,
+  };
+}
+
+async function deleteOrganizationRecords(organizationId: string) {
+  const tracker = await runWithTimeoutRetry(() =>
+    prisma.phaseTracker.findUnique({
+      where: { organizationId },
+      select: { id: true },
+    }),
+  );
+
+  await runWithTimeoutRetry(() =>
+    prisma.validationSignoff.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.validationFeedbackResponse.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftSnapshot.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftAssumptionRisk.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftLineOfAction.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftObjectiveResult.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.deliverable.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.diagnosisSurveyAnswer.deleteMany({
+      where: { response: { organizationId } },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.diagnosisSurveyResponse.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.diagnosticFinding.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.strategicObjective.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.outcome.deleteMany({ where: { theoryOfChange: { organizationId } } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.pathway.deleteMany({ where: { theoryOfChange: { organizationId } } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.theoryOfChange.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.phaseMigrationAudit.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.activitySession.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.sectionEngagement.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.roiSnapshot.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.roiBenchmarkChange.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.roiSetting.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingEvidence.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingParticipant.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.onboardingWorkspace.deleteMany({ where: { organizationId } }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.facilitatorGuidanceTask.deleteMany({
+      where: {
+        guidance: {
+          organizationId,
+        },
+      },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.facilitatorGuidance.deleteMany({ where: { organizationId } }),
+  );
+
+  if (tracker?.id) {
+    await runWithTimeoutRetry(() =>
+      prisma.phaseOutputCompletion.deleteMany({
+        where: { phase: { phaseTrackerId: tracker.id } },
+      }),
+    );
+    await runWithTimeoutRetry(() =>
+      prisma.phaseReview.deleteMany({
+        where: { phase: { phaseTrackerId: tracker.id } },
+      }),
+    );
+    await runWithTimeoutRetry(() =>
+      prisma.phase.deleteMany({ where: { phaseTrackerId: tracker.id } }),
+    );
+    await runWithTimeoutRetry(() =>
+      prisma.phaseTracker.deleteMany({ where: { id: tracker.id } }),
+    );
+  }
+
+  await runWithTimeoutRetry(() =>
+    prisma.auditEvent.updateMany({
+      where: { organizationId },
+      data: { organizationId: null },
+    }),
+  );
+}
+
+export async function removeUserAsFacilitator(input: {
+  actor: UserSession;
+  userId: string;
+  confirmationText: string;
+}) {
+  await assertFacilitatorActor(input.actor, "facilitator_user_remove_forbidden");
+
+  if (input.confirmationText.trim().toUpperCase() !== USER_DELETE_CONFIRMATION) {
+    throw new OrganizationAdminServiceError(
+      `Type "${USER_DELETE_CONFIRMATION}" to confirm user removal.`,
+      "USER_DELETE_CONFIRMATION_INVALID",
+      400,
+    );
+  }
+
+  if (input.userId === input.actor.id) {
+    throw new OrganizationAdminServiceError(
+      "Facilitator cannot remove own account.",
+      "USER_SELF_REMOVE_FORBIDDEN",
+      403,
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: {
+      id: true,
+      role: true,
+      organizationId: true,
+    },
+  });
+  if (!user) {
+    throw new OrganizationAdminServiceError("User not found.", "USER_NOT_FOUND", 404);
+  }
+  if (user.role !== ROLES.NGO_ADMIN) {
+    throw new OrganizationAdminServiceError(
+      "Only ngo_admin users can be removed from this dashboard.",
+      "USER_ROLE_REMOVE_FORBIDDEN",
+      403,
+    );
+  }
+
+  await retireUserAccount({
+    actor: input.actor,
+    userId: user.id,
+    reason: "manual_user_remove",
+  });
+
+  return {
+    userId: user.id,
+    removedAt: new Date(),
+  };
+}
+
+export async function removeOrganizationAsFacilitator(input: {
+  actor: UserSession;
+  organizationId: string;
+  confirmationText: string;
+}) {
+  await assertFacilitatorActor(input.actor, "facilitator_org_remove_forbidden");
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: input.organizationId },
+    select: { id: true, name: true },
+  });
+  if (!organization) {
+    throw new OrganizationAdminServiceError(
+      "Organization not found.",
+      "ORG_NOT_FOUND",
+      404,
+    );
+  }
+
+  if (input.confirmationText.trim().toUpperCase() !== ORGANIZATION_DELETE_CONFIRMATION) {
+    throw new OrganizationAdminServiceError(
+      `Type "${ORGANIZATION_DELETE_CONFIRMATION}" to confirm organization removal.`,
+      "ORG_DELETE_CONFIRMATION_INVALID",
+      400,
+    );
+  }
+
+  const actorAuthSessionId = input.actor.authSessionId ?? null;
+  if (actorAuthSessionId) {
+    await runWithTimeoutRetry(() =>
+      prisma.authSession.updateMany({
+        where: {
+          id: actorAuthSessionId,
+          organizationContextId: organization.id,
+        },
+        data: {
+          organizationContextId: null,
+        },
+      }),
+    );
+  }
+
+  const orgUsers = await prisma.user.findMany({
+    where: { organizationId: organization.id },
+    select: { id: true },
+  });
+  for (const user of orgUsers) {
+    if (user.id === input.actor.id) {
+      continue;
+    }
+    await retireUserAccount({
+      actor: input.actor,
+      userId: user.id,
+      reason: "organization_remove",
+    });
+  }
+  await runWithTimeoutRetry(() =>
+    prisma.user.updateMany({
+      where: {
+        organizationId: organization.id,
+      },
+      data: {
+        organizationId: null,
+      },
+    }),
+  );
+
+  await deleteAuthSessionsForOrganization(organization.id, {
+    preserveAuthSessionId: actorAuthSessionId,
+    preserveUserId: input.actor.id,
+  });
+
+  await deleteOrganizationRecords(organization.id);
+  await runWithTimeoutRetry(() =>
+    prisma.organization.delete({
+      where: { id: organization.id },
+    }),
+  );
+
+  await writeAuditEvent({
+    eventKey: "organization.admin.removed",
+    eventType: "ops",
+    actorId: input.actor.id,
+    actorRole: input.actor.role,
+    organizationId: null,
+    targetEntityType: "organization",
+    targetEntityId: organization.id,
+    metadata: {
+      name: organization.name,
+      source: "facilitator_dashboard",
+      confirmation: ORGANIZATION_DELETE_CONFIRMATION,
+    },
+  });
+
+  return {
+    organizationId: organization.id,
+    removedAt: new Date(),
   };
 }

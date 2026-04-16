@@ -73,13 +73,13 @@ type GuidanceByOrganization = Record<
   }
 >;
 
-type OnboardingConfigByOrganization = Record<
-  string,
-  {
-    mouDocumentUrl: string;
-    documentsFolderUrl: string;
-  }
->;
+type FacilitatorAdminUser = {
+  id: string;
+  name: string;
+  username: string | null;
+  role: string;
+  organizationId: string | null;
+};
 
 function buildFacilitatorInitials(name: string) {
   const parts = name
@@ -142,6 +142,25 @@ export default async function DashboardPage({
         })
       : Promise.resolve([] as Array<{ id: string; name: string }>),
   ]);
+  const facilitatorAdminUsers: FacilitatorAdminUser[] = roleContract.canAdministerOrganizations
+    ? await prisma.user.findMany({
+        where: {
+          isActive: true,
+          role: ROLES.NGO_ADMIN,
+          organizationId: {
+            in: facilitatorAdminOrganizations.map((organization) => organization.id),
+          },
+        },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          role: true,
+          organizationId: true,
+        },
+      })
+    : [];
 
   const emptyGuidance: GuidanceView = {
     facilitatorName: DEFAULT_FACILITATOR_NAME,
@@ -158,38 +177,22 @@ export default async function DashboardPage({
     : emptyGuidance;
 
   const facilitatorGuidanceByOrganization: GuidanceByOrganization = {};
-  const onboardingConfigByOrganization: OnboardingConfigByOrganization = {};
   if (roleContract.canAdministerOrganizations) {
-    const [guidanceRecords, onboardingRecords] = await Promise.all([
-      prisma.facilitatorGuidance.findMany({
-        where: {
-          organizationId: {
-            in: facilitatorAdminOrganizations.map((organization) => organization.id),
-          },
+    const guidanceRecords = await prisma.facilitatorGuidance.findMany({
+      where: {
+        organizationId: {
+          in: facilitatorAdminOrganizations.map((organization) => organization.id),
         },
-        include: {
-          tasks: {
-            orderBy: [{ status: "asc" }, { orderIndex: "asc" }, { createdAt: "asc" }],
-          },
+      },
+      include: {
+        tasks: {
+          orderBy: [{ status: "asc" }, { orderIndex: "asc" }, { createdAt: "asc" }],
         },
-      }),
-      prisma.onboardingWorkspace.findMany({
-        where: {
-          organizationId: {
-            in: facilitatorAdminOrganizations.map((organization) => organization.id),
-          },
-        },
-        select: {
-          organizationId: true,
-          mouDocumentUrl: true,
-          documentsFolderUrl: true,
-        },
-      }),
-    ]);
+      },
+    });
 
     for (const organization of facilitatorAdminOrganizations) {
       const guidance = guidanceRecords.find((record) => record.organizationId === organization.id);
-      const onboarding = onboardingRecords.find((record) => record.organizationId === organization.id);
       facilitatorGuidanceByOrganization[organization.id] = {
         facilitatorName: guidance?.facilitatorName || DEFAULT_FACILITATOR_NAME,
         message: guidance?.message ?? "",
@@ -202,10 +205,6 @@ export default async function DashboardPage({
             .filter((task) => task.status === "pending")
             .map((task) => task.text) ?? [],
         updatedAt: guidance?.updatedAt.toISOString() ?? null,
-      };
-      onboardingConfigByOrganization[organization.id] = {
-        mouDocumentUrl: onboarding?.mouDocumentUrl ?? "",
-        documentsFolderUrl: onboarding?.documentsFolderUrl ?? "",
       };
     }
   }
@@ -496,8 +495,8 @@ export default async function DashboardPage({
         <FacilitatorAdminPanel
           lang={lang === "es" ? "es" : "en"}
           organizations={facilitatorAdminOrganizations}
+          users={facilitatorAdminUsers}
           guidanceByOrganization={facilitatorGuidanceByOrganization}
-          onboardingConfigByOrganization={onboardingConfigByOrganization}
           strategicCoachVisible={strategicCoachVisible}
           exampleLibraryVisible={exampleLibraryVisible}
           workingDraftVisible={workingDraftVisible}

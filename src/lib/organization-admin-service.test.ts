@@ -5,8 +5,12 @@ import { ROLES, type UserSession } from "./auth.ts";
 import { authenticateWithCredentials, provisionUserAccount } from "./auth-service.ts";
 import {
   createOrganizationAsFacilitator,
+  ORGANIZATION_DELETE_CONFIRMATION,
   OrganizationAdminServiceError,
   ORGANIZATION_RESET_CONFIRMATION,
+  USER_DELETE_CONFIRMATION,
+  removeOrganizationAsFacilitator,
+  removeUserAsFacilitator,
   resetOrganizationContentAsFacilitator,
 } from "./organization-admin-service.ts";
 import { TOTAL_PHASES } from "./phase-model.ts";
@@ -479,6 +483,152 @@ test("organization reset requires typed confirmation text", async () => {
   } finally {
     if (organizationId) {
       await cleanupOrganization(organizationId);
+    }
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
+test("facilitator can remove ngo_admin user and revoke access", async () => {
+  const { facilitator, session } = await createFacilitatorSession();
+  const id = suffix();
+  let organizationId: string | null = null;
+  let removedUserId: string | null = null;
+
+  try {
+    const organization = await createOrganizationAsFacilitator({
+      actor: session,
+      name: `Org Remove User ${id}`,
+    });
+    organizationId = organization.id;
+
+    const createdUser = await provisionUserAccount({
+      actor: session,
+      username: `org-remove-user-${id}`,
+      name: "User to Remove",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+      password: "TempPass123!",
+      mustChangePassword: true,
+    });
+    removedUserId = createdUser.id;
+
+    await prisma.authSession.create({
+      data: {
+        userId: createdUser.id,
+        tokenHash: `token-${randomUUID()}`,
+        organizationContextId: organization.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+
+    const removed = await removeUserAsFacilitator({
+      actor: session,
+      userId: createdUser.id,
+      confirmationText: USER_DELETE_CONFIRMATION,
+    });
+    assert.equal(removed.userId, createdUser.id);
+
+    const retired = await prisma.user.findUniqueOrThrow({
+      where: { id: createdUser.id },
+      select: {
+        id: true,
+        isActive: true,
+        organizationId: true,
+        email: true,
+        username: true,
+      },
+    });
+    assert.equal(retired.isActive, false);
+    assert.equal(retired.organizationId, null);
+    assert.equal(retired.email.includes("@deleted.local"), true);
+    assert.equal((retired.username ?? "").includes("__deleted__"), true);
+    assert.equal(
+      await prisma.authSession.count({ where: { userId: createdUser.id } }),
+      0,
+    );
+  } finally {
+    if (organizationId) {
+      await cleanupOrganization(organizationId);
+    }
+    if (removedUserId) {
+      await prisma.user.deleteMany({ where: { id: removedUserId } });
+    }
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
+test("facilitator can remove organization from dashboard", async () => {
+  const { facilitator, session } = await createFacilitatorSession();
+  const id = suffix();
+  let retiredUserId: string | null = null;
+  let facilitatorAuthSessionId: string | null = null;
+  let organizationId: string | null = null;
+
+  try {
+    const organization = await createOrganizationAsFacilitator({
+      actor: session,
+      name: `Org Remove ${id}`,
+    });
+    organizationId = organization.id;
+
+    const orgUser = await provisionUserAccount({
+      actor: session,
+      username: `org-remove-admin-${id}`,
+      name: "Org Remove Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+      password: "TempPass123!",
+      mustChangePassword: true,
+    });
+    retiredUserId = orgUser.id;
+
+    const facilitatorAuthSession = await prisma.authSession.create({
+      data: {
+        userId: facilitator.id,
+        tokenHash: `token-${randomUUID()}`,
+        organizationContextId: organization.id,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    facilitatorAuthSessionId = facilitatorAuthSession.id;
+
+    const removed = await removeOrganizationAsFacilitator({
+      actor: {
+        ...session,
+        organizationId: organization.id,
+        authSessionId: facilitatorAuthSession.id,
+      },
+      organizationId: organization.id,
+      confirmationText: ORGANIZATION_DELETE_CONFIRMATION,
+    });
+    assert.equal(removed.organizationId, organization.id);
+
+    assert.equal(
+      await prisma.organization.count({ where: { id: organization.id } }),
+      0,
+    );
+    const retiredUser = await prisma.user.findUniqueOrThrow({
+      where: { id: orgUser.id },
+      select: { id: true, isActive: true, organizationId: true },
+    });
+    assert.equal(retiredUser.isActive, false);
+    assert.equal(retiredUser.organizationId, null);
+
+    const preservedSession = await prisma.authSession.findUnique({
+      where: { id: facilitatorAuthSession.id },
+      select: { id: true, organizationContextId: true },
+    });
+    assert.ok(preservedSession);
+    assert.equal(preservedSession?.organizationContextId, null);
+  } finally {
+    if (organizationId) {
+      await prisma.organization.deleteMany({ where: { id: organizationId } });
+    }
+    if (retiredUserId) {
+      await prisma.user.deleteMany({ where: { id: retiredUserId } });
+    }
+    if (facilitatorAuthSessionId) {
+      await prisma.authSession.deleteMany({ where: { id: facilitatorAuthSessionId } });
     }
     await prisma.user.deleteMany({ where: { id: facilitator.id } });
   }
