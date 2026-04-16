@@ -26,6 +26,9 @@ type FacilitatorAdminPanelProps = {
   organizations: OrganizationOption[];
   guidanceByOrganization: Record<string, OrganizationGuidance>;
   onboardingConfigByOrganization: Record<string, OrganizationOnboardingConfig>;
+  strategicCoachVisible: boolean;
+  exampleLibraryVisible: boolean;
+  workingDraftVisible: boolean;
 };
 
 type PanelStatus = {
@@ -71,6 +74,24 @@ const COPY = {
     onboardingFolder: "Carpeta de documentacion (Google Drive)",
     onboardingSubmit: "Guardar enlaces de Fase 1",
     successOnboarding: "Enlaces de Fase 1 actualizados.",
+    coachToggleTitle: "Visibilidad de Acompañante estratégico",
+    coachToggleSubtitle:
+      "Controla si la sección de Acompañante estratégico se muestra en dashboards y fases de todas las organizaciones.",
+    coachToggleLabel: "Mostrar sección de Acompañante estratégico",
+    coachToggleSubmit: "Guardar visibilidad",
+    successCoachToggle: "Visibilidad de Acompañante estratégico actualizada.",
+    exampleLibraryToggleTitle: "Visibilidad de Biblioteca de ejemplos",
+    exampleLibraryToggleSubtitle:
+      "Controla si la seccion Biblioteca de ejemplos se muestra en todas las organizaciones.",
+    exampleLibraryToggleLabel: "Mostrar seccion Biblioteca de ejemplos",
+    exampleLibraryToggleSubmit: "Guardar visibilidad",
+    successExampleLibraryToggle: "Visibilidad de Biblioteca de ejemplos actualizada.",
+    workingDraftToggleTitle: "Visibilidad de Borrador de trabajo",
+    workingDraftToggleSubtitle:
+      "Controla si la seccion Borrador de trabajo se muestra en todas las organizaciones.",
+    workingDraftToggleLabel: "Mostrar seccion Borrador de trabajo",
+    workingDraftToggleSubmit: "Guardar visibilidad",
+    successWorkingDraftToggle: "Visibilidad de Borrador de trabajo actualizada.",
     successCreate: "Organizacion creada correctamente.",
     successProvision: "Credenciales provisionadas correctamente.",
     successReset: "Contenido de la organizacion restablecido.",
@@ -114,6 +135,24 @@ const COPY = {
     onboardingFolder: "Documentation folder (Google Drive)",
     onboardingSubmit: "Save Phase 1 links",
     successOnboarding: "Phase 1 links updated.",
+    coachToggleTitle: "Strategic coach visibility",
+    coachToggleSubtitle:
+      "Control whether the strategic coach section appears across all organization dashboards and phases.",
+    coachToggleLabel: "Show strategic coach section",
+    coachToggleSubmit: "Save visibility",
+    successCoachToggle: "Strategic coach visibility updated.",
+    exampleLibraryToggleTitle: "Example library visibility",
+    exampleLibraryToggleSubtitle:
+      "Control whether the Example library section appears for all organizations.",
+    exampleLibraryToggleLabel: "Show Example library section",
+    exampleLibraryToggleSubmit: "Save visibility",
+    successExampleLibraryToggle: "Example library visibility updated.",
+    workingDraftToggleTitle: "Working draft visibility",
+    workingDraftToggleSubtitle:
+      "Control whether the Working draft section appears for all organizations.",
+    workingDraftToggleLabel: "Show Working draft section",
+    workingDraftToggleSubmit: "Save visibility",
+    successWorkingDraftToggle: "Working draft visibility updated.",
     successCreate: "Organization created successfully.",
     successProvision: "Credentials provisioned successfully.",
     successReset: "Organization content reset successfully.",
@@ -141,6 +180,9 @@ export function FacilitatorAdminPanel({
   organizations: initialOrganizations,
   guidanceByOrganization: initialGuidanceByOrganization,
   onboardingConfigByOrganization: initialOnboardingConfigByOrganization,
+  strategicCoachVisible: initialStrategicCoachVisible,
+  exampleLibraryVisible: initialExampleLibraryVisible,
+  workingDraftVisible: initialWorkingDraftVisible,
 }: FacilitatorAdminPanelProps) {
   const copy = COPY[lang];
   const router = useRouter();
@@ -152,6 +194,15 @@ export function FacilitatorAdminPanel({
   const [onboardingConfigByOrganization, setOnboardingConfigByOrganization] = useState<
     Record<string, OrganizationOnboardingConfig>
   >(initialOnboardingConfigByOrganization);
+  const [strategicCoachVisible, setStrategicCoachVisible] = useState<boolean>(
+    initialStrategicCoachVisible,
+  );
+  const [exampleLibraryVisible, setExampleLibraryVisible] = useState<boolean>(
+    initialExampleLibraryVisible,
+  );
+  const [workingDraftVisible, setWorkingDraftVisible] = useState<boolean>(
+    initialWorkingDraftVisible,
+  );
   const [status, setStatus] = useState<PanelStatus>(null);
 
   const uniqueOrganizations = useMemo(() => {
@@ -594,6 +645,129 @@ export function FacilitatorAdminPanel({
           {copy.onboardingSubmit}
         </button>
         {!hasOrganizations ? <p className="metric-sub">{copy.noOrganizations}</p> : null}
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-guidance"
+        onSubmit={(event) => {
+          event.preventDefault();
+          startTransition(async () => {
+            const response = await fetch("/api/admin/platform-settings/strategic-coach", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isVisible: strategicCoachVisible }),
+            });
+            const payload = (await response.json()) as
+              | { strategicCoachVisible?: boolean; error?: string }
+              | undefined;
+
+            if (!response.ok || typeof payload?.strategicCoachVisible !== "boolean") {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            setStrategicCoachVisible(payload.strategicCoachVisible);
+            setStatus({ type: "success", message: copy.successCoachToggle });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.coachToggleTitle}</h4>
+        <p className="metric-sub">{copy.coachToggleSubtitle}</p>
+        <label className="facilitator-admin-checkbox">
+          <input
+            type="checkbox"
+            checked={strategicCoachVisible}
+            onChange={(event) => setStrategicCoachVisible(event.currentTarget.checked)}
+            disabled={isPending}
+          />
+          <span>{copy.coachToggleLabel}</span>
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={isPending}>
+          {copy.coachToggleSubmit}
+        </button>
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-guidance"
+        onSubmit={(event) => {
+          event.preventDefault();
+          startTransition(async () => {
+            const response = await fetch("/api/admin/platform-settings/example-library", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isVisible: exampleLibraryVisible }),
+            });
+            const payload = (await response.json()) as
+              | { exampleLibraryVisible?: boolean; error?: string }
+              | undefined;
+
+            if (!response.ok || typeof payload?.exampleLibraryVisible !== "boolean") {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            setExampleLibraryVisible(payload.exampleLibraryVisible);
+            setStatus({ type: "success", message: copy.successExampleLibraryToggle });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.exampleLibraryToggleTitle}</h4>
+        <p className="metric-sub">{copy.exampleLibraryToggleSubtitle}</p>
+        <label className="facilitator-admin-checkbox">
+          <input
+            type="checkbox"
+            checked={exampleLibraryVisible}
+            onChange={(event) => setExampleLibraryVisible(event.currentTarget.checked)}
+            disabled={isPending}
+          />
+          <span>{copy.exampleLibraryToggleLabel}</span>
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={isPending}>
+          {copy.exampleLibraryToggleSubmit}
+        </button>
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-guidance"
+        onSubmit={(event) => {
+          event.preventDefault();
+          startTransition(async () => {
+            const response = await fetch("/api/admin/platform-settings/working-draft", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isVisible: workingDraftVisible }),
+            });
+            const payload = (await response.json()) as
+              | { workingDraftVisible?: boolean; error?: string }
+              | undefined;
+
+            if (!response.ok || typeof payload?.workingDraftVisible !== "boolean") {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            setWorkingDraftVisible(payload.workingDraftVisible);
+            setStatus({ type: "success", message: copy.successWorkingDraftToggle });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.workingDraftToggleTitle}</h4>
+        <p className="metric-sub">{copy.workingDraftToggleSubtitle}</p>
+        <label className="facilitator-admin-checkbox">
+          <input
+            type="checkbox"
+            checked={workingDraftVisible}
+            onChange={(event) => setWorkingDraftVisible(event.currentTarget.checked)}
+            disabled={isPending}
+          />
+          <span>{copy.workingDraftToggleLabel}</span>
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={isPending}>
+          {copy.workingDraftToggleSubmit}
+        </button>
       </form>
 
       <form

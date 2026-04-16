@@ -62,17 +62,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
       })
     : null;
   const reviewIsApproved = latestReview?.decision === "approved";
-  const fallbackApprovedFeedback =
-    props.lang === "es"
-      ? "Fase aprobada. Buen trabajo, puedes continuar con la siguiente fase."
-      : "Phase approved. Great work, you can continue to the next phase.";
-  const fallbackRejectedFeedback =
-    props.lang === "es"
-      ? "La fase fue devuelta con ajustes requeridos. Actualiza las salidas y vuelve a solicitar revision."
-      : "This phase was returned with required adjustments. Update the outputs and request review again.";
-  const feedbackText =
-    latestReview?.feedback?.trim() ||
-    (latestReview ? (reviewIsApproved ? fallbackApprovedFeedback : fallbackRejectedFeedback) : null);
+  const feedbackText = latestReview?.feedback?.trim() || null;
   const reviewDateLabel = latestReview
     ? new Intl.DateTimeFormat(props.lang === "es" ? "es-GT" : "en-US", {
         dateStyle: "medium",
@@ -99,7 +89,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
           {props.lang === "es" ? "Espacio de trabajo de fase" : "Phase workspace"}
         </p>
         <h1>
-          {props.phaseName} Â· {props.lang === "es" ? "Fase" : "Phase"}{" "}
+          {props.phaseName} - {props.lang === "es" ? "Fase" : "Phase"}{" "}
           {props.phaseNumber}/{totalPhases}
         </h1>
         <p>{getPhaseDescription(props.phaseNumber, props.lang)}</p>
@@ -322,8 +312,8 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
           <p className="phase-feedback-body">{feedbackText}</p>
           <p className="phase-feedback-meta">
             {props.lang === "es"
-              ? `Por ${latestReview.reviewer.name} â€¢ ${reviewDateLabel}`
-              : `By ${latestReview.reviewer.name} â€¢ ${reviewDateLabel}`}
+              ? `Por ${latestReview.reviewer.name} - ${reviewDateLabel}`
+              : `By ${latestReview.reviewer.name} - ${reviewDateLabel}`}
           </p>
         </section>
       ) : null}
@@ -414,8 +404,8 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
                     className="phase-next-link"
                   >
                     {props.lang === "es"
-                      ? `${item.organizationName} Â· Fase ${item.phaseNumber}`
-                      : `${item.organizationName} Â· Phase ${item.phaseNumber}`}
+                      ? `${item.organizationName} - Fase ${item.phaseNumber}`
+                      : `${item.organizationName} - Phase ${item.phaseNumber}`}
                   </Link>
                 ))}
               </div>

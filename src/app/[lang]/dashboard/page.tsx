@@ -11,6 +11,11 @@ import {
   DEFAULT_FACILITATOR_NAME,
   getOrganizationGuidance,
 } from "@/lib/facilitator-guidance-service";
+import {
+  getExampleLibraryVisibility,
+  getStrategicCoachVisibility,
+  getWorkingDraftVisibility,
+} from "@/lib/platform-settings-service";
 import { TOTAL_PHASES } from "@/lib/phase-model";
 import { getPhaseStatus } from "@/lib/phases";
 import { prisma } from "@/lib/prisma";
@@ -99,7 +104,14 @@ export default async function DashboardPage({
   const { lang } = await params;
   const locale = lang === "en" ? "en" : "es";
   const query = searchParams ? await searchParams : {};
-  const [dict, session] = await Promise.all([getDictionary(locale), getSessionOrNull()]);
+  const [dict, session, strategicCoachVisible, exampleLibraryVisible, workingDraftVisible] =
+    await Promise.all([
+      getDictionary(locale),
+      getSessionOrNull(),
+      getStrategicCoachVisibility(),
+      getExampleLibraryVisibility(),
+      getWorkingDraftVisibility(),
+    ]);
 
   if (!session) {
     const nextPath = buildPathWithQuery(`/${lang}/dashboard`, query);
@@ -486,6 +498,9 @@ export default async function DashboardPage({
           organizations={facilitatorAdminOrganizations}
           guidanceByOrganization={facilitatorGuidanceByOrganization}
           onboardingConfigByOrganization={onboardingConfigByOrganization}
+          strategicCoachVisible={strategicCoachVisible}
+          exampleLibraryVisible={exampleLibraryVisible}
+          workingDraftVisible={workingDraftVisible}
         />
       ) : null}
 
@@ -606,7 +621,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="sidebar-panel">
-          {isOrgDashboard ? (
+          {isOrgDashboard && strategicCoachVisible ? (
             <div className="coach-callout">
               <div className="coach-title">
                 <SparkleIcon size={16} /> {dict.coach.title}

@@ -16,6 +16,11 @@ import { ROLES, hasPermission } from "@/lib/auth";
 import { switchSessionOrganizationContext } from "@/lib/auth-service";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { resolvePhaseWorkspacePageState } from "@/lib/phase-workspace-page-state";
+import {
+  getExampleLibraryVisibility,
+  getStrategicCoachVisibility,
+  getWorkingDraftVisibility,
+} from "@/lib/platform-settings-service";
 import { prisma } from "@/lib/prisma";
 import { canAccessPhase, getPhaseStatus } from "@/lib/phases";
 import {
@@ -146,10 +151,14 @@ export default async function PhaseWorkspacePage({
     }
   }
 
-  const [phaseStatus, orgAccess] = await Promise.all([
-    getPhaseStatus(organizationId!),
-    canAccessPhase(organizationId!, parsedPhaseNumber),
-  ]);
+  const [phaseStatus, orgAccess, strategicCoachVisible, exampleLibraryVisible, workingDraftVisible] =
+    await Promise.all([
+      getPhaseStatus(organizationId!),
+      canAccessPhase(organizationId!, parsedPhaseNumber),
+      getStrategicCoachVisibility(),
+      getExampleLibraryVisibility(),
+      getWorkingDraftVisibility(),
+    ]);
   const access = resolveRolePhaseAccess({
     role: session.role,
     orgAccess,
@@ -281,7 +290,7 @@ export default async function PhaseWorkspacePage({
         pendingReviewItems={facilitatorPendingReviewItems}
       />
 
-      {isOrgAdmin && panels.showCoachPanel ? (
+      {isOrgAdmin && panels.showCoachPanel && strategicCoachVisible ? (
         <PhaseCoachPanel
           lang={locale}
           phaseNumber={parsedPhaseNumber}
@@ -289,7 +298,7 @@ export default async function PhaseWorkspacePage({
         />
       ) : null}
 
-      {isOrgAdmin && panels.showExampleLibraryPanel ? (
+      {isOrgAdmin && panels.showExampleLibraryPanel && exampleLibraryVisible ? (
         <section className="phase-library-entry">
           <h2>{lang === "es" ? "Biblioteca de ejemplos" : "Example library"}</h2>
           <p>
@@ -316,7 +325,7 @@ export default async function PhaseWorkspacePage({
         />
       ) : null}
 
-      {isOrgAdmin && parsedPhaseNumber !== 1 && !panels.showOnboardingPanel ? (
+      {isOrgAdmin && parsedPhaseNumber !== 1 && !panels.showOnboardingPanel && workingDraftVisible ? (
         <PhasePatternDraftPad
           key={`${organizationId}-${parsedPhaseNumber}-${selectedPattern ?? "none"}-${shouldApplyPattern ? "apply" : "view"}`}
           lang={locale}
@@ -327,7 +336,7 @@ export default async function PhaseWorkspacePage({
         />
       ) : null}
 
-      {panels.showDraftBuilderPanel ? (
+      {panels.showDraftBuilderPanel && workingDraftVisible ? (
         <DraftBuilderPanel
           lang={locale}
           organizationId={organizationId!}

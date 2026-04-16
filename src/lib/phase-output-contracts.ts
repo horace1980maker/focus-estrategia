@@ -12,7 +12,6 @@ const CONTRACTS_BY_PHASE: Record<PhaseKey, PhaseOutputContract[]> = {
   ],
   diagnosis: [
     { key: "diagnosis-survey", label: "Diagnosis Survey" },
-    { key: "diagnosis-synthesis", label: "Diagnosis Synthesis" },
   ],
   framework: [
     { key: "theory-of-change", label: "Theory of Change" },

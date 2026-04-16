@@ -398,6 +398,35 @@ async function closeExpiredSessionsForUser(session: UserSession) {
   }
 }
 
+async function closeOpenSessionsForUser(input: {
+  session: UserSession;
+  keepSessionId?: string;
+}) {
+  if (!input.session.organizationId) {
+    return;
+  }
+
+  const openSessions = await prisma.activitySession.findMany({
+    where: {
+      organizationId: input.session.organizationId,
+      userId: input.session.id,
+      endedAt: null,
+      ...(input.keepSessionId
+        ? {
+            id: {
+              not: input.keepSessionId,
+            },
+          }
+        : {}),
+    },
+    select: { id: true },
+  });
+
+  for (const openSession of openSessions) {
+    await finalizeSessionByIdInternal(openSession.id, false);
+  }
+}
+
 export async function startOrResumeActivitySession(input: {
   session: UserSession;
   sectionKey: string;
@@ -423,6 +452,11 @@ export async function startOrResumeActivitySession(input: {
       lastActivityAt: { gte: threshold },
     },
     orderBy: { lastActivityAt: "desc" },
+  });
+
+  await closeOpenSessionsForUser({
+    session,
+    keepSessionId: active?.id,
   });
 
   if (active) {
@@ -707,6 +741,73 @@ async function getSectionRowsForWindow(organizationId: string, window: Window) {
   });
 }
 
+type SessionWindowRow = {
+  userId: string;
+  startedAt: Date;
+  endedAt: Date | null;
+};
+
+function sumUniqueSessionMinutes(rows: SessionWindowRow[]): number {
+  const byUser = new Map<string, Array<{ startMs: number; endMs: number }>>();
+
+  for (const row of rows) {
+    if (!row.endedAt) {
+      continue;
+    }
+    const startMs = row.startedAt.getTime();
+    const endMs = row.endedAt.getTime();
+    const safeEndMs = endMs < startMs ? startMs : endMs;
+    const intervals = byUser.get(row.userId) ?? [];
+    intervals.push({ startMs, endMs: safeEndMs });
+    byUser.set(row.userId, intervals);
+  }
+
+  let totalMinutes = 0;
+  for (const intervals of byUser.values()) {
+    if (intervals.length === 0) {
+      continue;
+    }
+
+    intervals.sort((left, right) => left.startMs - right.startMs);
+    let currentStart = intervals[0]!.startMs;
+    let currentEnd = intervals[0]!.endMs;
+
+    for (const interval of intervals.slice(1)) {
+      if (interval.startMs <= currentEnd) {
+        currentEnd = Math.max(currentEnd, interval.endMs);
+        continue;
+      }
+
+      totalMinutes += Math.max(1, Math.ceil((currentEnd - currentStart) / 60000));
+      currentStart = interval.startMs;
+      currentEnd = interval.endMs;
+    }
+
+    totalMinutes += Math.max(1, Math.ceil((currentEnd - currentStart) / 60000));
+  }
+
+  return totalMinutes;
+}
+
+async function getUniqueSessionMinutesForWindow(organizationId: string, window: Window) {
+  const rows = await prisma.activitySession.findMany({
+    where: {
+      organizationId,
+      startedAt: {
+        gte: window.windowStart,
+        lt: window.windowEnd,
+      },
+    },
+    select: {
+      userId: true,
+      startedAt: true,
+      endedAt: true,
+    },
+  });
+
+  return sumUniqueSessionMinutes(rows);
+}
+
 function derivePendingDeliverableAction(input: {
   latestStatus: string | null;
   readinessStatus: string | null;
@@ -775,6 +876,8 @@ export async function getOrganizationMetrics(input: {
   const [
     rows,
     priorRows,
+    uniqueSessionMinutes,
+    priorUniqueSessionMinutes,
     setting,
     latestDeliverable,
     deliverableVersionsCount,
@@ -782,6 +885,8 @@ export async function getOrganizationMetrics(input: {
   ] = await Promise.all([
     getSectionRowsForWindow(input.organizationId, window),
     getSectionRowsForWindow(input.organizationId, priorWindow),
+    getUniqueSessionMinutesForWindow(input.organizationId, window),
+    getUniqueSessionMinutesForWindow(input.organizationId, priorWindow),
     getEffectiveRoiSetting(input.organizationId),
     prisma.deliverable.findFirst({
       where: { organizationId: input.organizationId },
@@ -793,8 +898,14 @@ export async function getOrganizationMetrics(input: {
     getPhaseStatus(input.organizationId),
   ]);
 
-  const totals = sumRows(rows);
-  const priorTotals = sumRows(priorRows);
+  const totals = {
+    ...sumRows(rows),
+    trackedMinutes: uniqueSessionMinutes,
+  };
+  const priorTotals = {
+    ...sumRows(priorRows),
+    trackedMinutes: priorUniqueSessionMinutes,
+  };
   const roi = calculateRoiValues({
     trackedMinutes: totals.trackedMinutes,
     completedTasks: totals.completedTasks,

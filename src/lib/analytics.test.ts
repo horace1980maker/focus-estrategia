@@ -566,6 +566,147 @@ test("session lifecycle closes correctly and avoids duplicate active sessions", 
   }
 });
 
+test("starting a different section closes previously-open user sessions", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Session Switch Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `session-switch-admin-${id}@example.org`,
+      name: "Session Switch Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  const session: UserSession = {
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: ROLES.NGO_ADMIN,
+    organizationId: organization.id,
+  };
+
+  try {
+    const first = await startOrResumeActivitySession({
+      session,
+      sectionKey: "ngo-dashboard",
+      phaseNumber: 2,
+    });
+    const second = await startOrResumeActivitySession({
+      session,
+      sectionKey: "phase-2-workspace",
+      phaseNumber: 2,
+    });
+
+    const refreshedFirst = await prisma.activitySession.findUniqueOrThrow({
+      where: { id: first.id },
+    });
+    const openSessions = await prisma.activitySession.findMany({
+      where: {
+        organizationId: organization.id,
+        userId: admin.id,
+        endedAt: null,
+      },
+    });
+
+    assert.ok(refreshedFirst.endedAt);
+    assert.equal(openSessions.length, 1);
+    assert.equal(openSessions[0]?.id, second.id);
+  } finally {
+    await cleanupByOrganization(organization.id);
+  }
+});
+
+test("organization metrics dedupe overlapping session time per user", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Session Overlap Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `session-overlap-admin-${id}@example.org`,
+      name: "Session Overlap Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  try {
+    const now = new Date();
+    const startedAtA = new Date(now.getTime() - 60 * 60 * 1000);
+    const endedAtA = new Date(now.getTime() - 20 * 60 * 1000);
+    const startedAtB = new Date(now.getTime() - 50 * 60 * 1000);
+    const endedAtB = new Date(now.getTime() - 10 * 60 * 1000);
+
+    await prisma.activitySession.createMany({
+      data: [
+        {
+          organizationId: organization.id,
+          userId: admin.id,
+          userRole: admin.role,
+          phaseNumber: 2,
+          sectionKey: "ngo-dashboard",
+          startedAt: startedAtA,
+          lastActivityAt: endedAtA,
+          endedAt: endedAtA,
+          durationMinutes: 40,
+        },
+        {
+          organizationId: organization.id,
+          userId: admin.id,
+          userRole: admin.role,
+          phaseNumber: 2,
+          sectionKey: "phase-2-workspace",
+          startedAt: startedAtB,
+          lastActivityAt: endedAtB,
+          endedAt: endedAtB,
+          durationMinutes: 40,
+        },
+      ],
+    });
+
+    const windowStart = new Date(
+      Date.UTC(
+        startedAtA.getUTCFullYear(),
+        startedAtA.getUTCMonth(),
+        startedAtA.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const windowEnd = new Date(windowStart);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+
+    await prisma.sectionEngagement.create({
+      data: {
+        organizationId: organization.id,
+        phaseNumber: 2,
+        sectionKey: "ngo-dashboard",
+        windowStart,
+        windowEnd,
+        totalMinutes: 80,
+        sessionsCount: 2,
+        completedTasks: 0,
+      },
+    });
+
+    const metrics = await getOrganizationMetrics({
+      organizationId: organization.id,
+      days: 30,
+      until: now,
+    });
+
+    assert.equal(metrics.totals.trackedMinutes, 50);
+    assert.equal(metrics.bySection[0]?.trackedMinutes, 80);
+  } finally {
+    await cleanupByOrganization(organization.id);
+  }
+});
+
 test("stale timeout sessions are capped at last activity plus timeout window", async () => {
   const id = suffix();
   const organization = await prisma.organization.create({
