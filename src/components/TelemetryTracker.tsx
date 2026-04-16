@@ -10,7 +10,13 @@ type TelemetryTrackerProps = {
 
 const HEARTBEAT_MS = 60_000;
 
-function sendSessionEnd(payload: { sessionId: string; sectionKey: string }) {
+type SessionEndPayload = {
+  sessionId: string;
+  sectionKey: string;
+  closedByTimeout?: boolean;
+};
+
+function sendSessionEnd(payload: SessionEndPayload) {
   const body = JSON.stringify(payload);
   if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
     const blob = new Blob([body], { type: "application/json" });
@@ -26,12 +32,17 @@ function sendSessionEnd(payload: { sessionId: string; sectionKey: string }) {
   }).catch(() => undefined);
 }
 
+function isDocumentVisible() {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
 export function TelemetryTracker({
   sectionKey,
   phaseNumber = 0,
   enabled = true,
 }: TelemetryTrackerProps) {
   const sessionIdRef = useRef<string | null>(null);
+  const isStartingRef = useRef(false);
 
   useEffect(() => {
     if (!enabled) {
@@ -41,7 +52,26 @@ export function TelemetryTracker({
     let isMounted = true;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
 
+    const end = (closedByTimeout: boolean) => {
+      const sessionId = sessionIdRef.current;
+      if (!sessionId) {
+        return;
+      }
+      sessionIdRef.current = null;
+      sendSessionEnd({ sessionId, sectionKey, closedByTimeout });
+    };
+
     const start = async () => {
+      if (
+        !isMounted ||
+        sessionIdRef.current ||
+        isStartingRef.current ||
+        !isDocumentVisible()
+      ) {
+        return;
+      }
+
+      isStartingRef.current = true;
       try {
         const response = await fetch("/api/analytics/sessions/start", {
           method: "POST",
@@ -60,36 +90,52 @@ export function TelemetryTracker({
         }
 
         sessionIdRef.current = payload.sessionId;
-        heartbeat = setInterval(() => {
-          const sessionId = sessionIdRef.current;
-          if (!sessionId) {
-            return;
-          }
-
-          void fetch("/api/analytics/sessions/touch", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sessionId }),
-            cache: "no-store",
-          }).catch(() => undefined);
-        }, HEARTBEAT_MS);
       } catch {
         // Best-effort tracker: do not block UI when telemetry fails.
+      } finally {
+        isStartingRef.current = false;
       }
     };
 
-    void start();
+    const onVisibilityChange = () => {
+      if (!isMounted) {
+        return;
+      }
+      if (!isDocumentVisible()) {
+        end(true);
+        return;
+      }
+      void start();
+    };
 
-    return () => {
-      isMounted = false;
-      if (heartbeat) {
-        clearInterval(heartbeat);
+    void start();
+    heartbeat = setInterval(() => {
+      if (!isDocumentVisible()) {
+        return;
       }
 
       const sessionId = sessionIdRef.current;
-      if (sessionId) {
-        sendSessionEnd({ sessionId, sectionKey });
+      if (!sessionId) {
+        void start();
+        return;
       }
+
+      void fetch("/api/analytics/sessions/touch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+        cache: "no-store",
+      }).catch(() => undefined);
+    }, HEARTBEAT_MS);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (heartbeat) {
+        clearInterval(heartbeat);
+      }
+      end(false);
     };
   }, [enabled, phaseNumber, sectionKey]);
 

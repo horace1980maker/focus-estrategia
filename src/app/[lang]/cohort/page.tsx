@@ -14,14 +14,6 @@ function formatHours(minutes: number) {
   return `${(minutes / 60).toFixed(1)}h`;
 }
 
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 export default async function CohortDashboard({
   params,
 }: {
@@ -70,6 +62,16 @@ export default async function CohortDashboard({
       org.gateStatus === "blocked" ||
       org.deliverablesBottleneck !== "none",
   ).length;
+  const activeOrganizations30d = organizations.filter(
+    (org) => org.trackedMinutes > 0 || org.completedTasks > 0,
+  ).length;
+  const organizationsWithTrackingSignal = organizations.filter(
+    (org) => org.trackedMinutes > 0 && org.completedTasks > 0,
+  ).length;
+  const trackingCoveragePct =
+    organizations.length > 0
+      ? Math.round((organizationsWithTrackingSignal / organizations.length) * 100)
+      : 0;
 
   const phaseDistribution = Array.from(
     { length: TOTAL_PHASES },
@@ -78,8 +80,6 @@ export default async function CohortDashboard({
     phase,
     count: organizations.filter((org) => org.currentPhase === phase).length,
   }));
-
-  const benchmarkRate = metrics?.benchmark.hourlyRateUsd ?? 20;
 
   const phaseStatusLabel = (status: string | null) => {
     if (!status) {
@@ -153,13 +153,12 @@ export default async function CohortDashboard({
         </div>
 
         <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>{copy.cohort_roi_30d}</div>
-          <div className={styles.metricValue}>
-            {formatUsd(metrics?.totals.roiUsdSaved ?? 0)}
-          </div>
+          <div className={styles.metricLabel}>{copy.active_orgs_30d}</div>
+          <div className={styles.metricValue}>{activeOrganizations30d}</div>
           <div className={styles.metricSub}>
-            {(metrics?.totals.roiHoursSaved ?? 0).toFixed(1)}h {copy.saved_at}{" "}
-            {formatUsd(benchmarkRate)}/h
+            {metricsError
+              ? copy.analytics_unavailable
+              : `${organizationsWithTrackingSignal}/${organizations.length} ${copy.orgs_with_tracking_signal}`}
           </div>
         </div>
       </div>
@@ -189,9 +188,9 @@ export default async function CohortDashboard({
         </div>
 
         <div className={styles.metricCard}>
-          <div className={styles.metricLabel}>{copy.roi_benchmark}</div>
-          <div className={styles.metricValue}>{formatUsd(benchmarkRate)}</div>
-          <div className={styles.metricSub}>{copy.roi_benchmark_sub}</div>
+          <div className={styles.metricLabel}>{copy.tracking_coverage}</div>
+          <div className={styles.metricValue}>{trackingCoveragePct}%</div>
+          <div className={styles.metricSub}>{copy.tracking_coverage_sub}</div>
         </div>
       </div>
 
@@ -230,7 +229,6 @@ export default async function CohortDashboard({
               <th>{copy.time_in_phase}</th>
               <th>{copy.time_30d}</th>
               <th>{copy.tasks}</th>
-              <th>{copy.roi_usd}</th>
               <th>{copy.current_gate}</th>
               <th>{copy.deliverables}</th>
               <th>{copy.status}</th>
@@ -265,7 +263,6 @@ export default async function CohortDashboard({
                   </td>
                   <td>{formatHours(org.trackedMinutes)}</td>
                   <td>{org.completedTasks}</td>
-                  <td>{formatUsd(org.roiUsdSaved)}</td>
                   <td>
                     <span
                       className={`${styles.statusBadge} ${
@@ -321,7 +318,7 @@ export default async function CohortDashboard({
 
             {organizations.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: "var(--space-xl)", color: "var(--outline)" }}>
+                <td colSpan={9} style={{ padding: "var(--space-xl)", color: "var(--outline)" }}>
                   {metricsError ? copy.no_organizations_error : copy.no_organizations_empty}
                 </td>
               </tr>
@@ -331,7 +328,7 @@ export default async function CohortDashboard({
       </div>
 
       <p className={styles.metricSub} style={{ marginTop: "var(--space-lg)" }}>
-        {copy.roi_footer}
+        {copy.cohort_focus_footer}
       </p>
     </>
   );

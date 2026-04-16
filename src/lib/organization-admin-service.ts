@@ -66,8 +66,32 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  if (chunkSize <= 0) {
+    return [items];
+  }
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+async function deleteByIdsInChunks(
+  ids: string[],
+  deleter: (chunkIds: string[]) => Promise<unknown>,
+  chunkSize = 250,
+) {
+  if (ids.length === 0) {
+    return;
+  }
+  for (const chunkIds of chunkArray(ids, chunkSize)) {
+    await runWithTimeoutRetry(() => deleter(chunkIds));
+  }
+}
+
 async function runWithTimeoutRetry<T>(operation: () => Promise<T>): Promise<T> {
-  const maxAttempts = 3;
+  const maxAttempts = 6;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       return await operation();
@@ -75,7 +99,8 @@ async function runWithTimeoutRetry<T>(operation: () => Promise<T>): Promise<T> {
       if (!isPrismaTimeoutError(error) || attempt === maxAttempts) {
         throw error;
       }
-      await sleep(attempt * 200);
+      const delayMs = Math.min(3000, 250 * 2 ** (attempt - 1));
+      await sleep(delayMs);
     }
   }
 
@@ -111,18 +136,20 @@ async function deleteAuthSessionsForOrganization(
       where: byOrganizationContextWhere,
     });
     if (userIds.length > 0) {
-      const byUserWhere: {
-        userId: { in: string[] };
-        NOT?: { id: string };
-      } = {
-        userId: { in: userIds },
-      };
-      if (preserveAuthSessionId) {
-        byUserWhere.NOT = { id: preserveAuthSessionId };
+      for (const userIdChunk of chunkArray(userIds, 250)) {
+        const byUserWhere: {
+          userId: { in: string[] };
+          NOT?: { id: string };
+        } = {
+          userId: { in: userIdChunk },
+        };
+        if (preserveAuthSessionId) {
+          byUserWhere.NOT = { id: preserveAuthSessionId };
+        }
+        await prisma.authSession.deleteMany({
+          where: byUserWhere,
+        });
       }
-      await prisma.authSession.deleteMany({
-        where: byUserWhere,
-      });
     }
   });
 }
@@ -247,118 +274,229 @@ export async function resetOrganizationContentAsFacilitator(input: {
   });
 
   const now = new Date();
-  await runWithTimeoutRetry(() =>
-    prisma.$transaction(
-      async (tx) => {
-        const tracker = await tx.phaseTracker.findUnique({
-          where: { organizationId: organization.id },
-          select: { id: true },
-        });
-
-      await tx.validationSignoff.deleteMany({
+  const [surveyResponseRows, theoryRows] = await Promise.all([
+    runWithTimeoutRetry(() =>
+      prisma.diagnosisSurveyResponse.findMany({
         where: { organizationId: organization.id },
-      });
-      await tx.validationFeedbackResponse.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.draftSnapshot.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.draftAssumptionRisk.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.draftLineOfAction.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.draftObjectiveResult.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.deliverable.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.diagnosisSurveyAnswer.deleteMany({
-        where: { response: { organizationId: organization.id } },
-      });
-      await tx.diagnosisSurveyResponse.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.diagnosticFinding.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.strategicObjective.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.outcome.deleteMany({
-        where: { theoryOfChange: { organizationId: organization.id } },
-      });
-      await tx.pathway.deleteMany({
-        where: { theoryOfChange: { organizationId: organization.id } },
-      });
-      await tx.theoryOfChange.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.phaseMigrationAudit.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.activitySession.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.sectionEngagement.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.roiSnapshot.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.roiBenchmarkChange.deleteMany({
-        where: { organizationId: organization.id },
-      });
-      await tx.roiSetting.deleteMany({
-        where: { organizationId: organization.id },
-      });
-
-      await tx.organization.update({
-        where: { id: organization.id },
-        data: {
-          country: null,
-          description: null,
-          logoUrl: null,
-        },
-      });
-
-      if (tracker?.id) {
-        await tx.phaseOutputCompletion.deleteMany({
-          where: {
-            phase: { phaseTrackerId: tracker.id },
-          },
-        });
-        await tx.phaseReview.deleteMany({
-          where: {
-            phase: { phaseTrackerId: tracker.id },
-          },
-        });
-        await tx.phase.deleteMany({
-          where: { phaseTrackerId: tracker.id },
-        });
-        await tx.phaseTracker.delete({
-          where: { id: tracker.id },
-        });
-      }
-
-      await tx.phaseTracker.create({
-        data: {
-          organizationId: organization.id,
-          currentPhase: 1,
-          phases: {
-            create: buildBaselinePhases(now),
-          },
-        },
-      });
-      },
-      {
-        maxWait: 20_000,
-        timeout: 60_000,
-      },
+        select: { id: true },
+      }),
     ),
+    runWithTimeoutRetry(() =>
+      prisma.theoryOfChange.findMany({
+        where: { organizationId: organization.id },
+        select: { id: true },
+      }),
+    ),
+  ]);
+  const surveyResponseIds = surveyResponseRows.map((row) => row.id);
+  const theoryOfChangeIds = theoryRows.map((row) => row.id);
+
+  await deleteByIdsInChunks(
+    surveyResponseIds,
+    (chunkIds) =>
+      prisma.diagnosisSurveyAnswer.deleteMany({
+        where: { responseId: { in: chunkIds } },
+      }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.diagnosisSurveyResponse.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+
+  await deleteByIdsInChunks(
+    theoryOfChangeIds,
+    (chunkIds) =>
+      prisma.outcome.deleteMany({
+        where: { theoryOfChangeId: { in: chunkIds } },
+      }),
+  );
+  await deleteByIdsInChunks(
+    theoryOfChangeIds,
+    (chunkIds) =>
+      prisma.pathway.deleteMany({
+        where: { theoryOfChangeId: { in: chunkIds } },
+      }),
+  );
+
+  await runWithTimeoutRetry(() =>
+    prisma.validationSignoff.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.validationFeedbackResponse.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftSnapshot.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftAssumptionRisk.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftLineOfAction.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.draftObjectiveResult.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.deliverable.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.diagnosticFinding.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.strategicObjective.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.theoryOfChange.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.phaseMigrationAudit.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  while (true) {
+    const activityRows = await runWithTimeoutRetry(() =>
+      prisma.activitySession.findMany({
+        where: { organizationId: organization.id },
+        select: { id: true },
+        take: 250,
+      }),
+    );
+    if (activityRows.length === 0) {
+      break;
+    }
+    await deleteByIdsInChunks(
+      activityRows.map((row) => row.id),
+      (chunkIds) =>
+        prisma.activitySession.deleteMany({
+          where: { id: { in: chunkIds } },
+        }),
+    );
+    if (activityRows.length < 250) {
+      break;
+    }
+  }
+  while (true) {
+    const engagementRows = await runWithTimeoutRetry(() =>
+      prisma.sectionEngagement.findMany({
+        where: { organizationId: organization.id },
+        select: { id: true },
+        take: 250,
+      }),
+    );
+    if (engagementRows.length === 0) {
+      break;
+    }
+    await deleteByIdsInChunks(
+      engagementRows.map((row) => row.id),
+      (chunkIds) =>
+        prisma.sectionEngagement.deleteMany({
+          where: { id: { in: chunkIds } },
+        }),
+    );
+    if (engagementRows.length < 250) {
+      break;
+    }
+  }
+  await runWithTimeoutRetry(() =>
+    prisma.roiSnapshot.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.roiBenchmarkChange.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.roiSetting.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+
+  await runWithTimeoutRetry(() =>
+    prisma.organization.update({
+      where: { id: organization.id },
+      data: {
+        country: null,
+        description: null,
+        logoUrl: null,
+      },
+    }),
+  );
+
+  const tracker = await runWithTimeoutRetry(() =>
+    prisma.phaseTracker.findUnique({
+      where: { organizationId: organization.id },
+      select: {
+        id: true,
+        phases: {
+          select: { id: true },
+        },
+      },
+    }),
+  );
+  const phaseIds = tracker?.phases.map((phase) => phase.id) ?? [];
+  await deleteByIdsInChunks(
+    phaseIds,
+    (chunkIds) =>
+      prisma.phaseOutputCompletion.deleteMany({
+        where: { phaseId: { in: chunkIds } },
+      }),
+  );
+  await deleteByIdsInChunks(
+    phaseIds,
+    (chunkIds) =>
+      prisma.phaseReview.deleteMany({
+        where: { phaseId: { in: chunkIds } },
+      }),
+  );
+  await deleteByIdsInChunks(
+    phaseIds,
+    (chunkIds) =>
+      prisma.phase.deleteMany({
+        where: { id: { in: chunkIds } },
+      }),
+  );
+
+  if (tracker?.id) {
+    await runWithTimeoutRetry(() =>
+      prisma.phaseTracker.delete({
+        where: { id: tracker.id },
+      }),
+    );
+  }
+
+  await runWithTimeoutRetry(() =>
+    prisma.phaseTracker.create({
+      data: {
+        organizationId: organization.id,
+        currentPhase: 1,
+        phases: {
+          create: buildBaselinePhases(now),
+        },
+      },
+    }),
   );
   await deleteAuthSessionsForOrganization(organization.id, {
     preserveAuthSessionId,

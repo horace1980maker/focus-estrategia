@@ -32,7 +32,7 @@ export default async function LandingPage({
       title: dict.phases.phase2,
       desc:
         lang === "es"
-          ? "Evaluacion de coherencia, capacidades y brechas estrategicas"
+          ? "Evaluación de coherencia, capacidades y brechas estrategicas"
           : "Coherence assessment, capabilities, and strategic gaps",
     },
     {
@@ -40,7 +40,7 @@ export default async function LandingPage({
       title: dict.phases.phase3,
       desc:
         lang === "es"
-          ? "Teoria de Cambio, prioridades y objetivos estrategicos"
+          ? "Teoría de Cambio, prioridades y objetivos estratégicos"
           : "Theory of Change, priorities, and strategic objectives",
     },
     {
@@ -48,7 +48,7 @@ export default async function LandingPage({
       title: dict.phases.phase4,
       desc:
         lang === "es"
-          ? "Resultados, lineas de accion, cronograma y borrador del plan"
+          ? "Resultados, líneas de acción, cronograma y borrador del plan"
           : "Results, lines of action, timeline, and plan draft",
     },
     {
@@ -56,7 +56,7 @@ export default async function LandingPage({
       title: dict.phases.phase5,
       desc:
         lang === "es"
-          ? "Revision final facilitada y ajustes del plan"
+          ? "Revisión final facilitada y ajustes del plan"
           : "Facilitated final review and plan adjustments",
     },
     {
@@ -64,7 +64,7 @@ export default async function LandingPage({
       title: dict.phases.phase6,
       desc:
         lang === "es"
-          ? "Empaquetado de entregables, versionado y exportacion final"
+          ? "Empaquetado de entregables, versionado y exportación final"
           : "Deliverables packaging, versioning, and final export",
     },
   ];
@@ -80,7 +80,7 @@ export default async function LandingPage({
           <Link
             href={`/${otherLocale}`}
             className="locale-switch"
-            aria-label={lang === "es" ? "Switch to English" : "Cambiar a espanol"}
+            aria-label={lang === "es" ? "Switch to English" : "Cambiar a español"}
           >
             {otherLocale.toUpperCase()}
           </Link>
@@ -126,7 +126,7 @@ export default async function LandingPage({
 
       <section className="landing-phases">
         <div className="landing-phases-inner">
-          <h2>{lang === "es" ? "Seis fases de acompanamiento" : "Six phases of accompaniment"}</h2>
+          <h2>{lang === "es" ? "Seis fases de acompañamiento" : "Six phases of accompaniment"}</h2>
           <div className="phase-cards">
             {phases.map((phase) => (
               <div key={phase.num} className="phase-card">

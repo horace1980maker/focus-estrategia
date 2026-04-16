@@ -344,19 +344,29 @@ async function finalizeSessionByIdInternal(sessionId: string, closedByTimeout: b
     return existing;
   }
 
-  const endedAt = new Date();
+  const now = new Date();
+  const timeoutCappedEnd = new Date(
+    existing.lastActivityAt.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000,
+  );
+  const endedAt = closedByTimeout
+    ? timeoutCappedEnd < now
+      ? timeoutCappedEnd
+      : now
+    : now;
+  const safeEndedAt =
+    endedAt.getTime() < existing.startedAt.getTime() ? existing.startedAt : endedAt;
   const durationMinutes = Math.max(
     1,
-    Math.ceil((endedAt.getTime() - existing.startedAt.getTime()) / 60000),
+    Math.ceil((safeEndedAt.getTime() - existing.startedAt.getTime()) / 60000),
   );
 
   const closed = await prisma.activitySession.update({
     where: { id: existing.id },
     data: {
-      endedAt,
+      endedAt: safeEndedAt,
       durationMinutes,
       isClosedByTimeout: closedByTimeout,
-      lastActivityAt: endedAt,
+      lastActivityAt: closedByTimeout ? existing.lastActivityAt : safeEndedAt,
     },
   });
 
@@ -921,6 +931,83 @@ type CohortOrgMetrics = {
   deliverablesBottleneck: string;
 };
 
+function normalizeOrganizationName(name: string): string {
+  return name.trim().toLocaleLowerCase();
+}
+
+function compareCohortOrgPriority(left: CohortOrgMetrics, right: CohortOrgMetrics): number {
+  if (right.trackedMinutes !== left.trackedMinutes) {
+    return right.trackedMinutes - left.trackedMinutes;
+  }
+  if (right.completedTasks !== left.completedTasks) {
+    return right.completedTasks - left.completedTasks;
+  }
+  if (right.sessionsCount !== left.sessionsCount) {
+    return right.sessionsCount - left.sessionsCount;
+  }
+  if ((right.currentPhase ?? 0) !== (left.currentPhase ?? 0)) {
+    return (right.currentPhase ?? 0) - (left.currentPhase ?? 0);
+  }
+  if ((right.deliverablesVersion ?? 0) !== (left.deliverablesVersion ?? 0)) {
+    return (right.deliverablesVersion ?? 0) - (left.deliverablesVersion ?? 0);
+  }
+  if (right.roiUsdSaved !== left.roiUsdSaved) {
+    return right.roiUsdSaved - left.roiUsdSaved;
+  }
+  return left.organizationId.localeCompare(right.organizationId);
+}
+
+function dedupeCohortOrganizationsByName(rows: CohortOrgMetrics[]): CohortOrgMetrics[] {
+  const grouped = new Map<string, CohortOrgMetrics[]>();
+  for (const row of rows) {
+    const key = normalizeOrganizationName(row.organizationName);
+    const existing = grouped.get(key) ?? [];
+    existing.push(row);
+    grouped.set(key, existing);
+  }
+
+  const deduped: CohortOrgMetrics[] = [];
+  for (const [nameKey, group] of grouped.entries()) {
+    if (group.length === 1) {
+      deduped.push(group[0]!);
+      continue;
+    }
+
+    const sortedGroup = [...group].sort(compareCohortOrgPriority);
+    const canonical = sortedGroup[0]!;
+
+    const totals = group.reduce(
+      (acc, item) => {
+        acc.trackedMinutes += item.trackedMinutes;
+        acc.completedTasks += item.completedTasks;
+        acc.sessionsCount += item.sessionsCount;
+        acc.roiUsdSaved += item.roiUsdSaved;
+        acc.roiHoursSaved += item.roiHoursSaved;
+        return acc;
+      },
+      {
+        trackedMinutes: 0,
+        completedTasks: 0,
+        sessionsCount: 0,
+        roiUsdSaved: 0,
+        roiHoursSaved: 0,
+      },
+    );
+
+    deduped.push({
+      ...canonical,
+      organizationName: canonical.organizationName.trim() || nameKey,
+      trackedMinutes: totals.trackedMinutes,
+      completedTasks: totals.completedTasks,
+      sessionsCount: totals.sessionsCount,
+      roiUsdSaved: round2(totals.roiUsdSaved),
+      roiHoursSaved: round2(totals.roiHoursSaved),
+    });
+  }
+
+  return deduped;
+}
+
 const PHASE_STATUS_SORT_ORDER: Record<string, number> = {
   review_requested: 0,
   in_progress: 1,
@@ -1008,7 +1095,9 @@ export async function getCohortMetrics(input: {
     });
   }
 
-  perOrganization.sort((left, right) => {
+  const dedupedOrganizations = dedupeCohortOrganizationsByName(perOrganization);
+
+  dedupedOrganizations.sort((left, right) => {
     const statusRankDiff =
       getPhaseStatusSortRank(left.currentPhaseStatus) -
       getPhaseStatusSortRank(right.currentPhaseStatus);
@@ -1031,7 +1120,7 @@ export async function getCohortMetrics(input: {
     return left.organizationName.localeCompare(right.organizationName);
   });
 
-  const totals = perOrganization.reduce(
+  const totals = dedupedOrganizations.reduce(
     (acc, org) => {
       acc.trackedMinutes += org.trackedMinutes;
       acc.completedTasks += org.completedTasks;
@@ -1086,10 +1175,10 @@ export async function getCohortMetrics(input: {
     bySection: Array.from(sectionMap.entries())
       .map(([sectionKey, trackedMinutes]) => ({ sectionKey, trackedMinutes }))
       .sort((a, b) => b.trackedMinutes - a.trackedMinutes),
-    organizations: perOrganization,
+    organizations: dedupedOrganizations,
     bottlenecks: {
-      blockedByGate: perOrganization.filter((org) => org.gateStatus === "blocked").length,
-      deliverablesPending: perOrganization.filter(
+      blockedByGate: dedupedOrganizations.filter((org) => org.gateStatus === "blocked").length,
+      deliverablesPending: dedupedOrganizations.filter(
         (org) => org.deliverablesBottleneck !== "none",
       ).length,
     },
@@ -1097,7 +1186,7 @@ export async function getCohortMetrics(input: {
       hourlyRateUsd: setting.hourlyRateUsd,
       baselineManualHoursPerTask: setting.baselineManualHoursPerTask,
     },
-    dataState: perOrganization.length > 0 ? "ready" : "empty",
+    dataState: dedupedOrganizations.length > 0 ? "ready" : "empty",
   };
 }
 

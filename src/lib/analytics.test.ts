@@ -3,6 +3,7 @@ import test from "node:test";
 import { ROLES, hasPermission, type UserSession } from "./auth.ts";
 import { AuthorizationError, requireOrganizationScope } from "./access-guards.ts";
 import {
+  SESSION_TIMEOUT_MINUTES,
   canAccessCohortAnalytics,
   getCohortMetrics,
   getOrganizationMetrics,
@@ -516,6 +517,69 @@ test("session lifecycle closes correctly and avoids duplicate active sessions", 
   }
 });
 
+test("stale timeout sessions are capped at last activity plus timeout window", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Session Timeout Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `session-timeout-admin-${id}@example.org`,
+      name: "Session Timeout Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  const session: UserSession = {
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: ROLES.NGO_ADMIN,
+    organizationId: organization.id,
+  };
+
+  try {
+    const startedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const lastActivityAt = new Date(startedAt.getTime() + 5 * 60 * 1000);
+    const expectedEnd = new Date(
+      lastActivityAt.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000,
+    );
+
+    const stale = await prisma.activitySession.create({
+      data: {
+        organizationId: organization.id,
+        userId: admin.id,
+        userRole: admin.role,
+        phaseNumber: 1,
+        sectionKey: "ngo-dashboard",
+        startedAt,
+        lastActivityAt,
+      },
+    });
+
+    await startOrResumeActivitySession({
+      session,
+      sectionKey: "ngo-dashboard",
+      phaseNumber: 1,
+    });
+
+    const closed = await prisma.activitySession.findUniqueOrThrow({
+      where: { id: stale.id },
+    });
+
+    assert.ok(closed.endedAt);
+    assert.equal(closed.isClosedByTimeout, true);
+    assert.equal(closed.endedAt?.getTime(), expectedEnd.getTime());
+    assert.equal(
+      closed.durationMinutes,
+      Math.max(1, Math.ceil((expectedEnd.getTime() - startedAt.getTime()) / 60000)),
+    );
+  } finally {
+    await cleanupByOrganization(organization.id);
+  }
+});
+
 test("organization metrics include gate + deliverables bottleneck signals", async () => {
   const id = suffix();
   const organization = await prisma.organization.create({
@@ -638,6 +702,46 @@ test("cohort metrics expose readiness bottlenecks and progression ordering", asy
     await prisma.user.deleteMany({ where: { id: blockedAdmin.id } });
     await prisma.user.deleteMany({ where: { id: readyAdmin.id } });
     await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
+test("cohort metrics collapse duplicate organization names into one row", async () => {
+  const id = suffix();
+  const duplicateName = `Duplicate Cohort Org ${id}`;
+  const orgA = await prisma.organization.create({
+    data: { name: duplicateName },
+  });
+  const orgB = await prisma.organization.create({
+    data: { name: duplicateName },
+  });
+
+  try {
+    await initializePhases(orgA.id);
+    await initializePhases(orgB.id);
+
+    await recordTaskCompletion({
+      organizationId: orgA.id,
+      sectionKey: "cohort-dashboard",
+      phaseNumber: 1,
+      count: 1,
+    });
+    await recordTaskCompletion({
+      organizationId: orgB.id,
+      sectionKey: "cohort-dashboard",
+      phaseNumber: 1,
+      count: 1,
+    });
+
+    const cohort = await getCohortMetrics({ days: 30, until: new Date() });
+    const duplicates = cohort.organizations.filter(
+      (organization) => organization.organizationName === duplicateName,
+    );
+
+    assert.equal(duplicates.length, 1);
+    assert.equal(duplicates[0]?.completedTasks, 2);
+  } finally {
+    await cleanupByOrganization(orgA.id);
+    await cleanupByOrganization(orgB.id);
   }
 });
 

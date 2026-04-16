@@ -19,14 +19,6 @@ function formatHours(minutes: number) {
   return `${(minutes / 60).toFixed(1)}h`;
 }
 
-function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function toTitleCaseSection(sectionKey: string) {
   return sectionKey
     .split("-")
@@ -127,9 +119,9 @@ export default async function DashboardPage({
 
   const trackedMinutes = organizationMetrics?.totals.trackedMinutes ?? 0;
   const completedTasks = organizationMetrics?.totals.completedTasks ?? 0;
-  const roiUsd = organizationMetrics?.roi.usdSaved ?? 0;
-  const roiHours = organizationMetrics?.roi.hoursSaved ?? 0;
-  const benchmarkRate = organizationMetrics?.roi.hourlyRateUsd ?? 20;
+  const activeSectionsCount = organizationMetrics?.bySection.length ?? 0;
+  const trackedHours = trackedMinutes / 60;
+  const tasksPerHour = trackedHours > 0 ? completedTasks / trackedHours : 0;
   const topSection = organizationMetrics?.bySection[0]?.sectionKey;
   const deliverableVersion = organizationMetrics?.deliverables.latestVersionNumber;
   const deliverableStatus = organizationMetrics?.deliverables.latestStatus ?? "draft";
@@ -249,9 +241,9 @@ export default async function DashboardPage({
           value: deliverablePendingAction,
         },
         {
-          label: lang === "es" ? "ROI organizacion (30d)" : "Organization ROI (30d)",
-          status: roiUsd > 0 ? ("complete" as const) : ("partial" as const),
-          value: formatUsd(roiUsd),
+          label: lang === "es" ? "Secciones activas (30d)" : "Active sections (30d)",
+          status: activeSectionsCount > 0 ? ("complete" as const) : ("missing" as const),
+          value: `${activeSectionsCount}`,
         },
       ]
     : [
@@ -266,9 +258,9 @@ export default async function DashboardPage({
           value: formatHours(trackedMinutes),
         },
         {
-          label: lang === "es" ? "ROI estimado" : "Estimated ROI",
-          status: roiUsd > 0 ? ("complete" as const) : ("partial" as const),
-          value: formatUsd(roiUsd),
+          label: lang === "es" ? "Productividad (30d)" : "Productivity (30d)",
+          status: tasksPerHour > 0 ? ("complete" as const) : ("partial" as const),
+          value: `${tasksPerHour.toFixed(1)} ${lang === "es" ? "tareas/h" : "tasks/h"}`,
         },
         {
           label: lang === "es" ? "Entregables (ultima version)" : "Deliverables (latest version)",
@@ -411,12 +403,16 @@ export default async function DashboardPage({
             </div>
 
             <div className="metric-card">
-              <div className="metric-label">{lang === "es" ? "ROI estimado" : "Estimated ROI"}</div>
-              <div className="metric-value">{formatUsd(roiUsd)}</div>
+              <div className="metric-label">
+                {lang === "es" ? "Productividad (30d)" : "Productivity (30d)"}
+              </div>
+              <div className="metric-value">
+                {tasksPerHour.toFixed(1)} {lang === "es" ? "tareas/h" : "tasks/h"}
+              </div>
               <div className="metric-sub">
                 {lang === "es"
-                  ? `${roiHours.toFixed(1)}h ahorradas @ ${formatUsd(benchmarkRate)}/h`
-                  : `${roiHours.toFixed(1)}h saved @ ${formatUsd(benchmarkRate)}/h`}
+                  ? `${completedTasks} tareas en ${formatHours(trackedMinutes)}`
+                  : `${completedTasks} tasks in ${formatHours(trackedMinutes)}`}
               </div>
             </div>
 
@@ -489,8 +485,8 @@ export default async function DashboardPage({
               </p>
               <p className="metric-sub" style={{ marginTop: "var(--space-sm)" }}>
                 {lang === "es"
-                  ? `El ROI es una estimacion con una tarifa de ${formatUsd(benchmarkRate)}/hora.`
-                  : `ROI is estimated using a ${formatUsd(benchmarkRate)}/hour benchmark.`}
+                  ? `Prioriza secciones con baja actividad y tareas pendientes para sostener el avance.`
+                  : `Prioritize low-activity sections and pending tasks to sustain momentum.`}
               </p>
             </div>
           ) : null}

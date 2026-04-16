@@ -27,6 +27,34 @@ export async function ensurePhaseOutputContracts(
   phaseNumber: number,
 ) {
   const contracts = getOutputContractsForPhaseNumber(phaseNumber);
+  const contractKeys = contracts.map((contract) => contract.key);
+
+  // Keep historical rows, but ensure only current contract keys remain required.
+  if (contractKeys.length > 0) {
+    await prisma.phaseOutputCompletion.updateMany({
+      where: {
+        phaseId,
+        isRequired: true,
+        outputKey: {
+          notIn: contractKeys,
+        },
+      },
+      data: {
+        isRequired: false,
+      },
+    });
+  } else {
+    await prisma.phaseOutputCompletion.updateMany({
+      where: {
+        phaseId,
+        isRequired: true,
+      },
+      data: {
+        isRequired: false,
+      },
+    });
+  }
+
   for (const contract of contracts) {
     await prisma.phaseOutputCompletion.upsert({
       where: {
