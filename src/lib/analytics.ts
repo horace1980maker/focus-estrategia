@@ -171,7 +171,7 @@ async function createOrUpdateRoiSnapshot(input: {
     hourlyRateUsd: input.hourlyRateUsd,
     baselineManualHoursPerTask: input.baselineManualHoursPerTask,
     totalCompletedTasks: Math.max(0, input.completedTasks),
-    totalTrackedMinutes: Math.max(0, input.trackedMinutes),
+    totalTrackedMinutes: Math.max(0, Math.floor(input.trackedMinutes)),
     generatedAt: new Date(),
   };
 
@@ -302,7 +302,7 @@ async function aggregateFinalizedSession(session: {
   const windowStart = startOfUtcDay(session.startedAt);
   const windowEnd = nextUtcDay(session.startedAt);
   const phaseNumber = normalizePhaseNumber(session.phaseNumber);
-  const minutes = Math.max(1, toNumberOrDefault(session.durationMinutes, 1));
+  const minutes = Math.max(0, toNumberOrDefault(session.durationMinutes, 0));
 
   await prisma.sectionEngagement.upsert({
     where: {
@@ -352,8 +352,8 @@ async function finalizeSessionByIdInternal(sessionId: string, closedByTimeout: b
   const safeEndedAt =
     endedAt.getTime() < existing.startedAt.getTime() ? existing.startedAt : endedAt;
   const durationMinutes = Math.max(
-    1,
-    Math.ceil((safeEndedAt.getTime() - existing.startedAt.getTime()) / 60000),
+    0,
+    Math.floor((safeEndedAt.getTime() - existing.startedAt.getTime()) / 60000),
   );
 
   const closed = await prisma.activitySession.update({
@@ -778,12 +778,12 @@ function sumUniqueSessionMinutes(rows: SessionWindowRow[]): number {
         continue;
       }
 
-      totalMinutes += Math.max(1, Math.ceil((currentEnd - currentStart) / 60000));
+      totalMinutes += Math.max(0, currentEnd - currentStart) / 60000;
       currentStart = interval.startMs;
       currentEnd = interval.endMs;
     }
 
-    totalMinutes += Math.max(1, Math.ceil((currentEnd - currentStart) / 60000));
+    totalMinutes += Math.max(0, currentEnd - currentStart) / 60000;
   }
 
   return totalMinutes;

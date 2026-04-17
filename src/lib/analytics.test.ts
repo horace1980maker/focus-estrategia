@@ -540,7 +540,7 @@ test("session lifecycle closes correctly and avoids duplicate active sessions", 
 
     assert.ok(closed);
     assert.ok(closed?.endedAt);
-    assert.ok((closed?.durationMinutes ?? 0) >= 1);
+    assert.ok((closed?.durationMinutes ?? 0) >= 0);
 
     await recordTaskCompletion({
       organizationId: organization.id,
@@ -559,8 +559,53 @@ test("session lifecycle closes correctly and avoids duplicate active sessions", 
 
     assert.ok(aggregate);
     assert.ok((aggregate?.sessionsCount ?? 0) >= 1);
-    assert.ok((aggregate?.totalMinutes ?? 0) >= 1);
+    assert.ok((aggregate?.totalMinutes ?? 0) >= 0);
     assert.ok((aggregate?.completedTasks ?? 0) >= 2);
+  } finally {
+    await cleanupByOrganization(organization.id);
+  }
+});
+
+test("organization metrics do not round sub-minute activity up to a full minute", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Sub-minute Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `sub-minute-admin-${id}@example.org`,
+      name: "Sub-minute Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  try {
+    await initializePhases(organization.id);
+
+    const now = new Date();
+    await prisma.activitySession.create({
+      data: {
+        organizationId: organization.id,
+        userId: admin.id,
+        userRole: admin.role,
+        phaseNumber: 1,
+        sectionKey: "ngo-dashboard",
+        startedAt: new Date(now.getTime() - 30_000),
+        lastActivityAt: new Date(now.getTime() - 5_000),
+        endedAt: now,
+        durationMinutes: 0,
+      },
+    });
+
+    const metrics = await getOrganizationMetrics({
+      organizationId: organization.id,
+      days: 30,
+      until: now,
+    });
+
+    assert.ok(metrics.totals.trackedMinutes < 1);
+    assert.ok(metrics.roi.platformHours < 0.1);
   } finally {
     await cleanupByOrganization(organization.id);
   }
