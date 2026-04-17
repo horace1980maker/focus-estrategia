@@ -23,6 +23,9 @@ import { getRoleViewContract } from "@/lib/role-dashboard-contracts";
 import { getSessionOrNull } from "@/lib/session";
 import "./dashboard.css";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function formatHours(minutes: number) {
   return `${(minutes / 60).toFixed(1)}h`;
 }
