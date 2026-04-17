@@ -73,6 +73,14 @@ export function TelemetryTracker({
       sendSessionEnd({ sessionId, sectionKey, closedByTimeout });
     };
 
+    const recoverAfterLostSession = () => {
+      sessionIdRef.current = null;
+      clearIdleTimeout();
+      if (isMounted && isDocumentVisible()) {
+        void start();
+      }
+    };
+
     function scheduleIdleTimeout() {
       clearIdleTimeout();
 
@@ -121,7 +129,21 @@ export function TelemetryTracker({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
         cache: "no-store",
-      }).catch(() => undefined);
+      })
+        .then((response) => {
+          if (response.ok) {
+            return;
+          }
+
+          if (sessionIdRef.current === sessionId) {
+            recoverAfterLostSession();
+          }
+        })
+        .catch(() => {
+          if (sessionIdRef.current === sessionId) {
+            recoverAfterLostSession();
+          }
+        });
     }
 
     function noteActivity() {

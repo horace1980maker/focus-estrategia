@@ -1,3 +1,4 @@
+import { DEFAULT_REPORTING_DAYS, getOrganizationMetrics } from "./analytics";
 import { prisma } from "./prisma";
 import { ROLES, type UserSession } from "./auth";
 import { writeAuditEvent } from "./audit";
@@ -5,6 +6,7 @@ import { TOTAL_PHASES, phaseNumberToKey } from "./phase-model";
 import { requireRole } from "./access-guards";
 
 export const ORGANIZATION_RESET_CONFIRMATION = "RESET";
+export const ORGANIZATION_TIME_RESET_CONFIRMATION = "RESET TIME";
 export const ORGANIZATION_DELETE_CONFIRMATION = "DELETE";
 export const USER_DELETE_CONFIRMATION = "DELETE";
 
@@ -335,6 +337,77 @@ export async function createOrganizationAsFacilitator(input: {
   });
 
   return organization;
+}
+
+export async function resetOrganizationTimeTrackingAsFacilitator(input: {
+  actor: UserSession;
+  organizationId: string;
+  confirmationText: string;
+}) {
+  await assertFacilitatorActor(input.actor, "facilitator_org_time_reset_forbidden");
+
+  const organization = await prisma.organization.findUnique({
+    where: { id: input.organizationId },
+    select: { id: true, name: true },
+  });
+  if (!organization) {
+    throw new OrganizationAdminServiceError(
+      "Organization not found.",
+      "ORG_NOT_FOUND",
+      404,
+    );
+  }
+
+  if (
+    input.confirmationText.trim().toUpperCase() !== ORGANIZATION_TIME_RESET_CONFIRMATION
+  ) {
+    throw new OrganizationAdminServiceError(
+      `Type "${ORGANIZATION_TIME_RESET_CONFIRMATION}" to confirm time reset.`,
+      "TIME_RESET_CONFIRMATION_INVALID",
+      400,
+    );
+  }
+
+  const now = new Date();
+  await runWithTimeoutRetry(() =>
+    prisma.activitySession.deleteMany({
+      where: { organizationId: organization.id },
+    }),
+  );
+  await runWithTimeoutRetry(() =>
+    prisma.sectionEngagement.updateMany({
+      where: { organizationId: organization.id },
+      data: {
+        totalMinutes: 0,
+        sessionsCount: 0,
+      },
+    }),
+  );
+
+  await getOrganizationMetrics({
+    organizationId: organization.id,
+    days: DEFAULT_REPORTING_DAYS,
+    until: now,
+  });
+
+  await writeAuditEvent({
+    eventKey: "organization.admin.time_reset",
+    eventType: "ops",
+    actorId: input.actor.id,
+    actorRole: input.actor.role,
+    organizationId: organization.id,
+    targetEntityType: "organization",
+    targetEntityId: organization.id,
+    metadata: {
+      source: "facilitator_dashboard",
+      confirmation: ORGANIZATION_TIME_RESET_CONFIRMATION,
+    },
+  });
+
+  return {
+    organizationId: organization.id,
+    resetAt: now,
+  };
 }
 
 export async function resetOrganizationContentAsFacilitator(input: {

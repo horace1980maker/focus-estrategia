@@ -3,15 +3,18 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { ROLES, type UserSession } from "./auth.ts";
 import { authenticateWithCredentials, provisionUserAccount } from "./auth-service.ts";
+import { getOrganizationMetrics } from "./analytics.ts";
 import {
   createOrganizationAsFacilitator,
   ORGANIZATION_DELETE_CONFIRMATION,
   OrganizationAdminServiceError,
   ORGANIZATION_RESET_CONFIRMATION,
+  ORGANIZATION_TIME_RESET_CONFIRMATION,
   USER_DELETE_CONFIRMATION,
   removeOrganizationAsFacilitator,
   removeUserAsFacilitator,
   resetOrganizationContentAsFacilitator,
+  resetOrganizationTimeTrackingAsFacilitator,
 } from "./organization-admin-service.ts";
 import { TOTAL_PHASES } from "./phase-model.ts";
 import { prisma } from "./prisma.ts";
@@ -480,6 +483,115 @@ test("organization reset requires typed confirmation text", async () => {
         error instanceof OrganizationAdminServiceError &&
         error.code === "RESET_CONFIRMATION_INVALID",
     );
+  } finally {
+    if (organizationId) {
+      await cleanupOrganization(organizationId);
+    }
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
+test("organization time reset clears tracked minutes but preserves task totals", async () => {
+  const { facilitator, session } = await createFacilitatorSession();
+  const id = suffix();
+  let organizationId: string | null = null;
+
+  try {
+    const organization = await createOrganizationAsFacilitator({
+      actor: session,
+      name: `Org Time Reset ${id}`,
+    });
+    organizationId = organization.id;
+
+    const admin = await prisma.user.create({
+      data: {
+        email: `org-time-reset-${id}@example.org`,
+        username: `org-time-reset-${id}`,
+        name: `Org Time Reset ${id}`,
+        role: ROLES.NGO_ADMIN,
+        organizationId: organization.id,
+      },
+    });
+
+    const startedAt = new Date(Date.now() - 45 * 60 * 1000);
+    const endedAt = new Date(Date.now() - 15 * 60 * 1000);
+    const windowStart = new Date(
+      Date.UTC(
+        startedAt.getUTCFullYear(),
+        startedAt.getUTCMonth(),
+        startedAt.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    const windowEnd = new Date(windowStart);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+
+    await prisma.activitySession.create({
+      data: {
+        organizationId: organization.id,
+        userId: admin.id,
+        userRole: ROLES.NGO_ADMIN,
+        phaseNumber: 1,
+        sectionKey: "ngo-dashboard",
+        startedAt,
+        lastActivityAt: endedAt,
+        endedAt,
+        durationMinutes: 30,
+      },
+    });
+    await prisma.sectionEngagement.create({
+      data: {
+        organizationId: organization.id,
+        phaseNumber: 1,
+        sectionKey: "ngo-dashboard",
+        windowStart,
+        windowEnd,
+        totalMinutes: 30,
+        sessionsCount: 1,
+        completedTasks: 4,
+      },
+    });
+
+    const beforeReset = await getOrganizationMetrics({
+      organizationId: organization.id,
+      days: 30,
+      until: new Date(),
+    });
+    assert.equal(beforeReset.totals.trackedMinutes, 30);
+    assert.equal(beforeReset.totals.completedTasks, 4);
+
+    await resetOrganizationTimeTrackingAsFacilitator({
+      actor: session,
+      organizationId: organization.id,
+      confirmationText: ORGANIZATION_TIME_RESET_CONFIRMATION,
+    });
+
+    const activityCount = await prisma.activitySession.count({
+      where: { organizationId: organization.id },
+    });
+    const engagement = await prisma.sectionEngagement.findFirst({
+      where: {
+        organizationId: organization.id,
+        sectionKey: "ngo-dashboard",
+        phaseNumber: 1,
+      },
+    });
+    const afterReset = await getOrganizationMetrics({
+      organizationId: organization.id,
+      days: 30,
+      until: new Date(),
+    });
+
+    assert.equal(activityCount, 0);
+    assert.equal(engagement?.totalMinutes, 0);
+    assert.equal(engagement?.sessionsCount, 0);
+    assert.equal(engagement?.completedTasks, 4);
+    assert.equal(afterReset.totals.trackedMinutes, 0);
+    assert.equal(afterReset.totals.completedTasks, 4);
+    assert.equal(afterReset.bySection[0]?.trackedMinutes, 0);
   } finally {
     if (organizationId) {
       await cleanupOrganization(organizationId);

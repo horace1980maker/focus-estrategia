@@ -61,6 +61,11 @@ const COPY = {
       'Esta accion elimina avances de trabajo (fases, borradores, validaciones, entregables, analitica) y reabre la organizacion en Fase 1. Escribe "RESET" para confirmar.',
     resetConfirmLabel: 'Confirmacion (escribe "RESET")',
     resetSubmit: "Restablecer contenido",
+    timeResetTitle: "Restablecer tiempo en plataforma",
+    timeResetWarning:
+      'Esta accion borra solo el tiempo registrado (minutos y sesiones) de la organizacion. Conserva fases, borradores, validaciones, entregables y tareas. Escribe "RESET TIME" para confirmar.',
+    timeResetConfirmLabel: 'Confirmacion (escribe "RESET TIME")',
+    timeResetSubmit: "Restablecer tiempo",
     guidanceTitle: "Mensaje y tareas para organizacion",
     guidanceSubtitle:
       "Actualiza el mensaje del facilitador y la lista de tareas visibles en el dashboard de la ONG.",
@@ -105,6 +110,7 @@ const COPY = {
     successCreate: "Organizacion creada correctamente.",
     successProvision: "Credenciales provisionadas correctamente.",
     successReset: "Contenido de la organizacion restablecido.",
+    successTimeReset: "Tiempo en plataforma restablecido correctamente.",
     unknownError: "No se pudo completar la accion.",
     noOrganizations: "No hay organizaciones disponibles.",
   },
@@ -129,6 +135,11 @@ const COPY = {
       'This action clears workflow progress (phases, drafts, validation, deliverables, analytics) and returns the organization to Phase 1. Type "RESET" to confirm.',
     resetConfirmLabel: 'Confirmation (type "RESET")',
     resetSubmit: "Reset content",
+    timeResetTitle: "Reset platform time",
+    timeResetWarning:
+      'This action clears only the recorded time (minutes and sessions) for the organization. It keeps phases, drafts, validation, deliverables, and tasks. Type "RESET TIME" to confirm.',
+    timeResetConfirmLabel: 'Confirmation (type "RESET TIME")',
+    timeResetSubmit: "Reset time",
     guidanceTitle: "Organization message and tasks",
     guidanceSubtitle:
       "Update the facilitator message and task list shown in the NGO dashboard.",
@@ -173,6 +184,7 @@ const COPY = {
     successCreate: "Organization created successfully.",
     successProvision: "Credentials provisioned successfully.",
     successReset: "Organization content reset successfully.",
+    successTimeReset: "Platform time reset successfully.",
     unknownError: "The action could not be completed.",
     noOrganizations: "No organizations available.",
   },
@@ -241,6 +253,8 @@ export function FacilitatorAdminPanel({
     useState<string>(defaultOrganizationId);
   const [removeOrganizationId, setRemoveOrganizationId] =
     useState<string>(defaultOrganizationId);
+  const [resetTimeOrganizationId, setResetTimeOrganizationId] =
+    useState<string>(defaultOrganizationId);
   const usersByOrganization = useMemo(
     () =>
       users.filter(
@@ -275,6 +289,11 @@ export function FacilitatorAdminPanel({
       setRemoveOrganizationId(defaultOrganizationId);
     }
   }, [defaultOrganizationId, removeOrganizationId]);
+  useEffect(() => {
+    if (!resetTimeOrganizationId && defaultOrganizationId) {
+      setResetTimeOrganizationId(defaultOrganizationId);
+    }
+  }, [defaultOrganizationId, resetTimeOrganizationId]);
   useEffect(() => {
     if (selectableUsers.length === 0) {
       setRemoveUserId("");
@@ -364,6 +383,9 @@ export function FacilitatorAdminPanel({
               }
               if (!removeOrganizationId) {
                 setRemoveOrganizationId(createdOrganization.id);
+              }
+              if (!resetTimeOrganizationId) {
+                setResetTimeOrganizationId(createdOrganization.id);
               }
               form.reset();
               setStatus({ type: "success", message: copy.successCreate });
@@ -757,6 +779,74 @@ export function FacilitatorAdminPanel({
           event.preventDefault();
           const form = event.currentTarget;
           const formData = new FormData(form);
+          const organizationId = String(formData.get("organizationId") ?? "").trim();
+          const confirmationText = String(formData.get("confirmationText") ?? "");
+
+          startTransition(async () => {
+            const response = await fetch(
+              `/api/admin/organizations/${organizationId}/time-reset`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ confirmationText }),
+              },
+            );
+            const payload = (await response.json()) as { error?: string } | undefined;
+            if (!response.ok) {
+              setStatus({ type: "error", message: toErrorMessage(copy, payload) });
+              return;
+            }
+
+            form.reset();
+            const organizationLabel =
+              organizations.find((organization) => organization.id === organizationId)?.name ??
+              organizationId;
+            setStatus({
+              type: "success",
+              message: `${copy.successTimeReset} (${organizationLabel})`,
+            });
+            router.refresh();
+          });
+        }}
+      >
+        <h4>{copy.timeResetTitle}</h4>
+        <p className="facilitator-admin-warning">{copy.timeResetWarning}</p>
+        <label>
+          <span>{copy.organization}</span>
+          <select
+            name="organizationId"
+            className="input"
+            value={resetTimeOrganizationId}
+            onChange={(event) => setResetTimeOrganizationId(event.target.value)}
+            required
+            disabled={!hasOrganizations}
+          >
+            {uniqueOrganizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{copy.timeResetConfirmLabel}</span>
+          <input name="confirmationText" className="input" required />
+        </label>
+        <button
+          type="submit"
+          className="btn btn-primary facilitator-admin-reset-button"
+          disabled={isPending || !hasOrganizations}
+        >
+          {copy.timeResetSubmit}
+        </button>
+      </form>
+
+      <form
+        className="facilitator-admin-card facilitator-admin-reset facilitator-admin-danger-card"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const formData = new FormData(form);
           const userId = String(formData.get("userId") ?? "").trim();
           const confirmationText = String(formData.get("confirmationText") ?? "");
 
@@ -879,6 +969,9 @@ export function FacilitatorAdminPanel({
             }
             if (removeOrganizationId === organizationId) {
               setRemoveOrganizationId("");
+            }
+            if (resetTimeOrganizationId === organizationId) {
+              setResetTimeOrganizationId("");
             }
             form.reset();
             setStatus({
