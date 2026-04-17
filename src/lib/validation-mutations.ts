@@ -1,7 +1,10 @@
 import type { UserSession } from "./auth";
 import { prisma } from "./prisma";
 import { evaluateValidationMutationAccess } from "./validation-access";
-import { syncValidationOutputCompletion } from "./validation-readiness-sync";
+import {
+  getValidationReadiness,
+  syncValidationOutputCompletion,
+} from "./validation-readiness-sync";
 
 export type ValidationMutationResult = {
   success: boolean;
@@ -29,7 +32,7 @@ function getValidationAccessErrorMessage(
 }
 
 async function isValidationLocked(organizationId: string): Promise<boolean> {
-  const readiness = await syncValidationOutputCompletion(organizationId);
+  const readiness = await getValidationReadiness(organizationId);
   return readiness.isValidatedPlanComplete;
 }
 

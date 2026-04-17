@@ -8,6 +8,7 @@ import {
   deleteValidationSignature,
   saveValidationFeedback,
 } from "./validation-mutations.ts";
+import { getValidationReadiness } from "./validation-readiness-sync.ts";
 
 function suffix() {
   return `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
@@ -235,6 +236,60 @@ test("validated plan lock blocks additional writes once first signoff is capture
       deleteAfterLock.error,
       "Validation is locked after the plan has been marked as validated.",
     );
+  } finally {
+    await cleanupOrganization(organization.id);
+  }
+});
+
+test("reading validation readiness does not mutate phase 5 output completion", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { id: `org-val-read-${id}`, name: `Validation Read Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `admin-read-${id}@example.org`,
+      username: `admin-read-${id}`,
+      name: "Validation Read Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  try {
+    await initializePhases(organization.id);
+
+    await prisma.validationFeedbackResponse.create({
+      data: {
+        organizationId: organization.id,
+        response: "Ready for facilitator review.",
+        submittedById: admin.id,
+      },
+    });
+
+    const before = await getPhaseOutputStatus(organization.id, 5);
+    const beforeFeedback = before.outputs.find(
+      (output) => output.outputKey === "facilitator-review-response",
+    );
+    const beforeValidatedPlan = before.outputs.find(
+      (output) => output.outputKey === "validated-plan",
+    );
+    assert.equal(beforeFeedback?.isCompleted, false);
+    assert.equal(beforeValidatedPlan?.isCompleted, false);
+
+    const readiness = await getValidationReadiness(organization.id);
+    assert.equal(readiness.isFeedbackComplete, true);
+    assert.equal(readiness.isValidatedPlanComplete, false);
+
+    const after = await getPhaseOutputStatus(organization.id, 5);
+    const afterFeedback = after.outputs.find(
+      (output) => output.outputKey === "facilitator-review-response",
+    );
+    const afterValidatedPlan = after.outputs.find(
+      (output) => output.outputKey === "validated-plan",
+    );
+    assert.equal(afterFeedback?.isCompleted, false);
+    assert.equal(afterValidatedPlan?.isCompleted, false);
   } finally {
     await cleanupOrganization(organization.id);
   }

@@ -2,7 +2,7 @@ import { saveValidationFeedbackAction, addValidationSignatureAction, deleteValid
 import type { Locale } from "@/i18n/config";
 import { getDictionary } from "@/i18n/get-dictionary";
 import { prisma } from "@/lib/prisma";
-import { syncValidationOutputCompletion } from "@/lib/validation-readiness-sync";
+import { getValidationReadiness } from "@/lib/validation-readiness-sync";
 
 interface ValidationPanelProps {
   organizationId: string;
@@ -42,7 +42,7 @@ export default async function ValidationPanel({
     include: { signedBy: true },
   });
 
-  const readiness = await syncValidationOutputCompletion(organizationId);
+  const readiness = await getValidationReadiness(organizationId);
   const isFullyValidated = readiness.isValidatedPlanComplete;
 
   async function handleFeedbackSubmit(formData: FormData) {

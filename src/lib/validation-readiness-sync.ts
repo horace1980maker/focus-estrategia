@@ -32,14 +32,23 @@ export async function fetchValidationReadinessInput(
 }
 
 /**
+ * Reads validation readiness without mutating any PhaseOutputCompletion rows.
+ */
+export async function getValidationReadiness(
+  organizationId: string,
+): Promise<ValidationReadiness> {
+  const input = await fetchValidationReadinessInput(organizationId);
+  return evaluateValidationReadiness(input);
+}
+
+/**
  * Fetches validation readiness and synchronises PhaseOutputCompletion records.
  * Returns the readiness result for display purposes.
  */
 export async function syncValidationOutputCompletion(
   organizationId: string,
 ): Promise<ValidationReadiness> {
-  const input = await fetchValidationReadinessInput(organizationId);
-  const readiness = evaluateValidationReadiness(input);
+  const readiness = await getValidationReadiness(organizationId);
 
   // Find the Phase 5 record for this organization
   const tracker = await prisma.phaseTracker.findUnique({
