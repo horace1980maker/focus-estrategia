@@ -6,8 +6,10 @@ import {
   authenticateWithCredentials,
   changeUserPassword,
   provisionUserAccount,
+  revokeAuthSessionToken,
   resolveUserSessionFromToken,
 } from "./auth-service.ts";
+import { startOrResumeActivitySession } from "./analytics.ts";
 import { prisma } from "./prisma.ts";
 
 function suffix() {
@@ -31,6 +33,12 @@ async function cleanupOrganization(organizationId: string) {
     await prisma.phaseTracker.delete({ where: { id: phaseTracker.id } });
   }
 
+  await prisma.activitySession.deleteMany({
+    where: { organizationId },
+  });
+  await prisma.sectionEngagement.deleteMany({
+    where: { organizationId },
+  });
   await prisma.authSession.deleteMany({
     where: {
       OR: [
@@ -252,6 +260,87 @@ test("facilitator reprovisioning updates existing org-admin credentials", async 
       password: "SecondPass123!",
     });
     assert.equal(login.user.id, first.id);
+  } finally {
+    await cleanupOrganization(organization.id);
+    await prisma.user.deleteMany({ where: { id: facilitator.id } });
+  }
+});
+
+test("logout finalizes open activity sessions before the cookie is cleared", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: {
+      id: `org-logout-${id}`,
+      name: `Logout Org ${id}`,
+      country: "Guatemala",
+    },
+  });
+
+  const facilitator = await prisma.user.create({
+    data: {
+      email: `fac-logout-${id}@internal.local`,
+      username: `fac-logout-${id}`,
+      name: "Facilitator Logout",
+      role: ROLES.FACILITATOR,
+      organizationId: null,
+    },
+  });
+
+  const facilitatorSession: UserSession = {
+    id: facilitator.id,
+    email: facilitator.email,
+    name: facilitator.name,
+    role: ROLES.FACILITATOR,
+    organizationId: null,
+  };
+
+  const username = `org-logout-${id}-admin`;
+
+  try {
+    await provisionUserAccount({
+      actor: facilitatorSession,
+      username,
+      email: null,
+      name: "Org Admin Logout",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+      password: "LogoutPass123!",
+      mustChangePassword: false,
+    });
+
+    const login = await authenticateWithCredentials({
+      username,
+      password: "LogoutPass123!",
+    });
+    const session = await resolveUserSessionFromToken(login.token);
+
+    assert.ok(session);
+
+    const activity = await startOrResumeActivitySession({
+      session: session!,
+      sectionKey: "ngo-dashboard",
+      phaseNumber: 1,
+    });
+
+    await revokeAuthSessionToken({
+      token: login.token,
+      reason: "user_requested",
+    });
+
+    const finalizedSession = await prisma.activitySession.findUnique({
+      where: { id: activity.id },
+    });
+    const engagement = await prisma.sectionEngagement.findFirst({
+      where: {
+        organizationId: organization.id,
+        sectionKey: "ngo-dashboard",
+        phaseNumber: 1,
+      },
+    });
+
+    assert.ok(finalizedSession?.endedAt);
+    assert.ok((finalizedSession?.durationMinutes ?? 0) >= 1);
+    assert.ok((engagement?.totalMinutes ?? 0) >= 1);
   } finally {
     await cleanupOrganization(organization.id);
     await prisma.user.deleteMany({ where: { id: facilitator.id } });

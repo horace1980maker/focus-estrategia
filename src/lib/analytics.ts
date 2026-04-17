@@ -427,6 +427,10 @@ async function closeOpenSessionsForUser(input: {
   }
 }
 
+export async function finalizeOpenActivitySessionsForUser(session: UserSession) {
+  await closeOpenSessionsForUser({ session });
+}
+
 export async function startOrResumeActivitySession(input: {
   session: UserSession;
   sectionKey: string;

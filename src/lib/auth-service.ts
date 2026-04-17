@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { ROLES, type Role, type UserSession } from "./auth";
+import { finalizeOpenActivitySessionsForUser } from "./analytics";
 import { writeAuditEvent } from "./audit";
 import { initializePhases } from "./phases";
 import { createSessionToken, hashPassword, sha256Hex, verifyPassword } from "./security";
@@ -309,6 +310,18 @@ export async function revokeAuthSessionToken(input: {
   if (!authSession || authSession.revokedAt) {
     return;
   }
+
+  await finalizeOpenActivitySessionsForUser({
+    id: authSession.user.id,
+    email: authSession.user.email,
+    name: authSession.user.name,
+    role: authSession.user.role as Role,
+    organizationId: authSession.organizationContextId ?? authSession.user.organizationId,
+    authSessionId: authSession.id,
+    mustChangePassword: authSession.user.mustChangePassword,
+    isActive: authSession.user.isActive,
+    authMode: "credentials",
+  });
 
   await prisma.authSession.update({
     where: { id: authSession.id },
