@@ -348,11 +348,7 @@ async function finalizeSessionByIdInternal(sessionId: string, closedByTimeout: b
   const timeoutCappedEnd = new Date(
     existing.lastActivityAt.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000,
   );
-  const endedAt = closedByTimeout
-    ? timeoutCappedEnd < now
-      ? timeoutCappedEnd
-      : now
-    : now;
+  const endedAt = timeoutCappedEnd < now ? timeoutCappedEnd : now;
   const safeEndedAt =
     endedAt.getTime() < existing.startedAt.getTime() ? existing.startedAt : endedAt;
   const durationMinutes = Math.max(

@@ -427,6 +427,7 @@
   background: var(--surface-container-low);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
 }
 
 .facilitator-note-header {
@@ -462,9 +463,12 @@
   margin-left: auto;
 }
 
-.facilitator-note p {
+.facilitator-note-body {
+  margin: 0;
   font-size: var(--body-sm);
   line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Responsive ─── */

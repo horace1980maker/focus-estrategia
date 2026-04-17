@@ -335,6 +335,8 @@ export default async function DashboardPage({
     : lang === "es"
       ? "Sin actualizar"
       : "Not updated";
+  const announcementsTitle =
+    lang === "es" ? "ANUNCIOS IMPORTANTES" : "IMPORTANT ANNOUNCEMENTS";
 
   const scorecardItems = isFacilitator
     ? [
@@ -508,6 +510,69 @@ export default async function DashboardPage({
 
       <div className="dashboard-grid">
         <div>
+          {!isFacilitator ? (
+            <div className="facilitator-note">
+              <div className="facilitator-note-header">
+                <div className="facilitator-avatar">
+                  {buildFacilitatorInitials(announcementsTitle)}
+                </div>
+                <span className="facilitator-name">{announcementsTitle}</span>
+                <span className="facilitator-date">{facilitatorNoteDate}</span>
+              </div>
+              <p className="facilitator-note-body">
+                {organizationGuidance.message.length > 0
+                  ? organizationGuidance.message
+                  : lang === "es"
+                    ? "Tu facilitador compartira aqui mensajes de seguimiento para cada fase."
+                : "Your facilitator will share phase follow-up guidance here."}
+              </p>
+            </div>
+          ) : null}
+
+          {!isFacilitator ? (
+            <div className="task-list">
+              <h3>{dict.dashboard.what_to_do_now}</h3>
+              {ngoTasks.map((task) => (
+                <div key={task.id} className="task-item">
+                  <div className={`task-check${task.done ? " done" : ""}`} />
+                  <span className={`task-text${task.done ? " done" : ""}`}>{task.text}</span>
+                  <span className="task-due">{task.due}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="task-list">
+              <h3>{lang === "es" ? "Prioridades de seguimiento" : "Follow-up priorities"}</h3>
+              <div className="task-item">
+                <div className={`task-check${queueCount > 0 ? "" : " done"}`} />
+                <span className="task-text">
+                  {lang === "es"
+                    ? "Revisar solicitudes pendientes por fase"
+                    : "Review pending phase requests"}
+                </span>
+                <span className="task-due">{queueCount}</span>
+              </div>
+              <div className="task-item">
+                <div className={`task-check${trackedMinutes > 0 ? " done" : ""}`} />
+                <span className="task-text">
+                  {lang === "es"
+                    ? "Validar engagement y tareas de la organizacion activa"
+                    : "Validate engagement and task completion in active organization"}
+                </span>
+                <span className="task-due">{completedTasks}</span>
+              </div>
+              <div className="task-item">
+                <div className={`task-check${deliverablePendingAction === "none" ? " done" : ""}`} />
+                <span className="task-text">
+                  {lang === "es"
+                    ? "Confirmar estado de entregables y siguiente accion"
+                    : "Confirm deliverables status and next action"}
+                </span>
+                <span className="task-due">{deliverablePendingAction}</span>
+              </div>
+            </div>
+          )}
+
           <div className="metrics-row">
             <div className="metric-card">
               <div className="metric-label">{dict.dashboard.overall_progress}</div>
@@ -557,69 +622,6 @@ export default async function DashboardPage({
               </div>
             </div>
           </div>
-
-          {!isFacilitator ? (
-            <div className="task-list">
-              <h3>{dict.dashboard.what_to_do_now}</h3>
-              {ngoTasks.map((task) => (
-                <div key={task.id} className="task-item">
-                  <div className={`task-check${task.done ? " done" : ""}`} />
-                  <span className={`task-text${task.done ? " done" : ""}`}>{task.text}</span>
-                  <span className="task-due">{task.due}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="task-list">
-              <h3>{lang === "es" ? "Prioridades de seguimiento" : "Follow-up priorities"}</h3>
-              <div className="task-item">
-                <div className={`task-check${queueCount > 0 ? "" : " done"}`} />
-                <span className="task-text">
-                  {lang === "es"
-                    ? "Revisar solicitudes pendientes por fase"
-                    : "Review pending phase requests"}
-                </span>
-                <span className="task-due">{queueCount}</span>
-              </div>
-              <div className="task-item">
-                <div className={`task-check${trackedMinutes > 0 ? " done" : ""}`} />
-                <span className="task-text">
-                  {lang === "es"
-                    ? "Validar engagement y tareas de la organizacion activa"
-                    : "Validate engagement and task completion in active organization"}
-                </span>
-                <span className="task-due">{completedTasks}</span>
-              </div>
-              <div className="task-item">
-                <div className={`task-check${deliverablePendingAction === "none" ? " done" : ""}`} />
-                <span className="task-text">
-                  {lang === "es"
-                    ? "Confirmar estado de entregables y siguiente accion"
-                    : "Confirm deliverables status and next action"}
-                </span>
-                <span className="task-due">{deliverablePendingAction}</span>
-              </div>
-            </div>
-          )}
-
-          {!isFacilitator ? (
-            <div className="facilitator-note">
-              <div className="facilitator-note-header">
-                <div className="facilitator-avatar">
-                  {buildFacilitatorInitials(organizationGuidance.facilitatorName)}
-                </div>
-                <span className="facilitator-name">{organizationGuidance.facilitatorName}</span>
-                <span className="facilitator-date">{facilitatorNoteDate}</span>
-              </div>
-              <p>
-                {organizationGuidance.message.length > 0
-                  ? organizationGuidance.message
-                  : lang === "es"
-                    ? "Tu facilitador compartira aqui el mensaje de seguimiento para esta fase."
-                    : "Your facilitator will share phase follow-up guidance here."}
-              </p>
-            </div>
-          ) : null}
         </div>
 
         <div className="sidebar-panel">

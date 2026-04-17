@@ -770,6 +770,65 @@ test("stale timeout sessions are capped at last activity plus timeout window", a
   }
 });
 
+test("manual session finalization is capped at the idle timeout window", async () => {
+  const id = suffix();
+  const organization = await prisma.organization.create({
+    data: { name: `Manual Timeout Org ${id}` },
+  });
+  const admin = await prisma.user.create({
+    data: {
+      email: `manual-timeout-admin-${id}@example.org`,
+      name: "Manual Timeout Admin",
+      role: ROLES.NGO_ADMIN,
+      organizationId: organization.id,
+    },
+  });
+
+  const session: UserSession = {
+    id: admin.id,
+    email: admin.email,
+    name: admin.name,
+    role: ROLES.NGO_ADMIN,
+    organizationId: organization.id,
+  };
+
+  try {
+    const startedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const lastActivityAt = new Date(startedAt.getTime() + 5 * 60 * 1000);
+    const expectedEnd = new Date(
+      lastActivityAt.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000,
+    );
+
+    const stale = await prisma.activitySession.create({
+      data: {
+        organizationId: organization.id,
+        userId: admin.id,
+        userRole: admin.role,
+        phaseNumber: 1,
+        sectionKey: "ngo-dashboard",
+        startedAt,
+        lastActivityAt,
+      },
+    });
+
+    const closed = await finalizeActivitySessionById({
+      session,
+      sessionId: stale.id,
+      closedByTimeout: false,
+    });
+
+    assert.ok(closed);
+    assert.ok(closed?.endedAt);
+    assert.equal(closed?.endedAt?.getTime(), expectedEnd.getTime());
+    assert.equal(
+      closed?.durationMinutes,
+      Math.max(1, Math.ceil((expectedEnd.getTime() - startedAt.getTime()) / 60000)),
+    );
+  } finally {
+    await cleanupByOrganization(organization.id);
+  }
+});
+
 test("organization metrics include gate + deliverables bottleneck signals", async () => {
   const id = suffix();
   const organization = await prisma.organization.create({

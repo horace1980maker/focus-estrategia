@@ -8,7 +8,9 @@ type TelemetryTrackerProps = {
   enabled?: boolean;
 };
 
-const HEARTBEAT_MS = 60_000;
+const IDLE_TIMEOUT_MS = 10 * 60_000;
+const ACTIVITY_SIGNAL_THROTTLE_MS = 1_000;
+const TOUCH_THROTTLE_MS = 30_000;
 
 type SessionEndPayload = {
   sessionId: string;
@@ -43,6 +45,9 @@ export function TelemetryTracker({
 }: TelemetryTrackerProps) {
   const sessionIdRef = useRef<string | null>(null);
   const isStartingRef = useRef(false);
+  const lastActivitySignalAtRef = useRef(0);
+  const lastTouchSentAtRef = useRef(0);
+  const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -50,7 +55,13 @@ export function TelemetryTracker({
     }
 
     let isMounted = true;
-    let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+    function clearIdleTimeout() {
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
+    }
 
     const end = (closedByTimeout: boolean) => {
       const sessionId = sessionIdRef.current;
@@ -58,8 +69,81 @@ export function TelemetryTracker({
         return;
       }
       sessionIdRef.current = null;
+      clearIdleTimeout();
       sendSessionEnd({ sessionId, sectionKey, closedByTimeout });
     };
+
+    function scheduleIdleTimeout() {
+      clearIdleTimeout();
+
+      const sessionId = sessionIdRef.current;
+      if (!sessionId || !isMounted) {
+        return;
+      }
+
+      const elapsedSinceActivity = Date.now() - lastActivitySignalAtRef.current;
+      const timeoutInMs = Math.max(IDLE_TIMEOUT_MS - elapsedSinceActivity, 1_000);
+
+      idleTimeoutRef.current = setTimeout(() => {
+        if (!isMounted || !sessionIdRef.current) {
+          return;
+        }
+
+        if (!isDocumentVisible()) {
+          end(true);
+          return;
+        }
+
+        const idleForMs = Date.now() - lastActivitySignalAtRef.current;
+        if (idleForMs >= IDLE_TIMEOUT_MS) {
+          end(true);
+          return;
+        }
+
+        scheduleIdleTimeout();
+      }, timeoutInMs + 250);
+    }
+
+    function sendTouchIfNeeded() {
+      const sessionId = sessionIdRef.current;
+      if (!sessionId) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastTouchSentAtRef.current < TOUCH_THROTTLE_MS) {
+        return;
+      }
+
+      lastTouchSentAtRef.current = now;
+      void fetch("/api/analytics/sessions/touch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+        cache: "no-store",
+      }).catch(() => undefined);
+    }
+
+    function noteActivity() {
+      if (!isMounted || !isDocumentVisible()) {
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastActivitySignalAtRef.current < ACTIVITY_SIGNAL_THROTTLE_MS) {
+        return;
+      }
+
+      lastActivitySignalAtRef.current = now;
+
+      if (!sessionIdRef.current) {
+        void start();
+        return;
+      }
+
+      scheduleIdleTimeout();
+      sendTouchIfNeeded();
+    }
 
     const start = async () => {
       if (
@@ -90,6 +174,10 @@ export function TelemetryTracker({
         }
 
         sessionIdRef.current = payload.sessionId;
+        const now = Date.now();
+        lastActivitySignalAtRef.current = now;
+        lastTouchSentAtRef.current = now;
+        scheduleIdleTimeout();
       } catch {
         // Best-effort tracker: do not block UI when telemetry fails.
       } finally {
@@ -105,36 +193,39 @@ export function TelemetryTracker({
         end(true);
         return;
       }
+      if (sessionIdRef.current) {
+        noteActivity();
+        return;
+      }
       void start();
     };
 
     void start();
-    heartbeat = setInterval(() => {
-      if (!isDocumentVisible()) {
-        return;
-      }
 
-      const sessionId = sessionIdRef.current;
-      if (!sessionId) {
-        void start();
-        return;
-      }
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "mousemove",
+      "scroll",
+      "touchstart",
+      "focus",
+    ];
+    const onUserActivity = () => {
+      noteActivity();
+    };
 
-      void fetch("/api/analytics/sessions/touch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-        cache: "no-store",
-      }).catch(() => undefined);
-    }, HEARTBEAT_MS);
+    for (const eventName of activityEvents) {
+      window.addEventListener(eventName, onUserActivity);
+    }
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       isMounted = false;
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      if (heartbeat) {
-        clearInterval(heartbeat);
+      for (const eventName of activityEvents) {
+        window.removeEventListener(eventName, onUserActivity);
       }
+      clearIdleTimeout();
       end(false);
     };
   }, [enabled, phaseNumber, sectionKey]);
