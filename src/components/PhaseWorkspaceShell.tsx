@@ -362,7 +362,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
               ) : null}
 
               {/* Facilitation card and all others: standard toggle */}
-              {canManuallyToggleOutputs ? (
+              {canManuallyToggleOutputs && !isMaterialsCard ? (
                 <form
                   action={setPhaseOutputCompletionOrThrowAction.bind(
                     null,
