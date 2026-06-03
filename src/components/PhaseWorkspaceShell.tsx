@@ -1,8 +1,9 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { requestReviewAction } from "@/app/actions/phases";
 import { approvePhaseAction, rejectPhaseAction } from "@/app/actions/phases";
 import { setPhaseOutputCompletionAction } from "@/app/actions/phases";
 import { saveOnboardingWorkspaceAction } from "@/app/actions/onboarding";
+import { saveFrameworkWorkspaceAction } from "@/app/actions/framework";
 import type { Locale } from "@/i18n/config";
 import { getPhaseDescription } from "@/lib/phase-metadata";
 import { prisma } from "@/lib/prisma";
@@ -32,11 +33,27 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
   const dict = await getDictionary(props.lang);
   const totalPhases = getTotalPhases();
   const summary = await getPhaseOutputStatus(props.organizationId, props.phaseNumber);
+  const isPhase3 = props.phaseNumber === 3;
+  if (isPhase3) {
+    const desiredOrder = [
+      "facilitation-session-1",
+      "materials",
+      "facilitation-session-2",
+      "materials-session-2",
+      "facilitation-session-3",
+      "materials-session-3",
+      "facilitation-session-4",
+      "materials-session-4",
+    ];
+    summary.outputs.sort((a, b) => desiredOrder.indexOf(a.outputKey) - desiredOrder.indexOf(b.outputKey));
+  }
   const missingCount = summary.missingOutputs.length;
   const isPhase1 = props.phaseNumber === 1;
   const canEditPhaseOutputs = props.canEditOutputs && props.phaseStatus !== "approved";
-  const canManuallyToggleOutputs = canEditPhaseOutputs;
+  const canManuallyToggleOutputs =
+    canEditPhaseOutputs || (isPhase3 && props.activeRole === "facilitator" && props.phaseStatus !== "approved");
   const canEditPhase1Links = isPhase1 && props.activeRole === "facilitator";
+  const canEditPhase3Links = isPhase3 && props.activeRole === "facilitator";
   const nextPhaseNumber =
     props.phaseNumber < totalPhases ? props.phaseNumber + 1 : null;
   const canRequestReview = props.canEditOutputs && props.phaseStatus === "in_progress";
@@ -81,6 +98,22 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
       : null;
   const organizationMouDownloadUrl = onboardingWorkspace?.mouDocumentUrl?.trim() || "";
   const organizationDocsFolderUrl = onboardingWorkspace?.documentsFolderUrl?.trim() || "";
+  const frameworkWorkspace =
+    isPhase3
+      ? await prisma.frameworkWorkspace.findUnique({
+          where: { organizationId: props.organizationId },
+          select: {
+            materialsFolderUrl: true,
+            materialsFolderUrl2: true,
+            materialsFolderUrl3: true,
+            materialsFolderUrl4: true,
+          },
+        })
+      : null;
+  const materialsFolderUrl = frameworkWorkspace?.materialsFolderUrl?.trim() || "";
+  const materialsFolderUrl2 = frameworkWorkspace?.materialsFolderUrl2?.trim() || "";
+  const materialsFolderUrl3 = frameworkWorkspace?.materialsFolderUrl3?.trim() || "";
+  const materialsFolderUrl4 = frameworkWorkspace?.materialsFolderUrl4?.trim() || "";
 
   return (
     <section className="phase-workspace-shell">
@@ -123,15 +156,26 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
         </div>
       </div>
 
-      <div className="phase-output-grid">
+      <div className={`phase-output-grid${isPhase3 ? " phase-3-grid" : ""}`}>
         {summary.outputs.map((output) => {
+          const isMaterialsCard = output.outputKey.startsWith("materials");
           const nextCompletedState = !output.isCompleted;
+          let cardMaterialsUrl = "";
+          if (output.outputKey === "materials") {
+            cardMaterialsUrl = materialsFolderUrl;
+          } else if (output.outputKey === "materials-session-2") {
+            cardMaterialsUrl = materialsFolderUrl2;
+          } else if (output.outputKey === "materials-session-3") {
+            cardMaterialsUrl = materialsFolderUrl3;
+          } else if (output.outputKey === "materials-session-4") {
+            cardMaterialsUrl = materialsFolderUrl4;
+          }
           const buttonText = output.isCompleted
             ? props.lang === "es"
-              ? "Marcar pendiente"
+              ? "Marcar como pendiente"
               : "Mark pending"
             : props.lang === "es"
-              ? "Marcar completo"
+              ? "Marcar como completo"
               : "Mark complete";
 
           return (
@@ -271,6 +315,67 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
                   </button>
                 </form>
               ) : null}
+
+              {/* Phase 3 Materials card: "Acceder" button linking to materials folder */}
+              {isMaterialsCard ? (
+                cardMaterialsUrl ? (
+                  <a
+                    href={cardMaterialsUrl}
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      marginBottom: "var(--space-sm)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      width: "100%",
+                    }}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <FileIcon size={14} />
+                    {props.lang === "es" ? "Acceder" : "Access"}
+                  </a>
+                ) : (
+                  <p className="phase-review-hint" style={{ marginBottom: "var(--space-sm)" }}>
+                    {canEditPhase3Links
+                      ? props.lang === "es"
+                        ? "Configura el enlace a la carpeta de materiales."
+                        : "Configure the materials folder link."
+                      : props.lang === "es"
+                        ? "El facilitador debe configurar el enlace de materiales."
+                        : "The facilitator must configure the materials link."}
+                  </p>
+                )
+              ) : null}
+
+              {isMaterialsCard && canEditPhase3Links ? (
+                <form
+                  action={async (formData: FormData) => {
+                    "use server";
+                    const result = await saveFrameworkWorkspaceAction(props.organizationId, formData);
+                    if (!result.success) {
+                      throw new Error(result.error);
+                    }
+                  }}
+                  className="phase-review-form"
+                >
+                  <label htmlFor={`phase3-${output.outputKey}-link-${props.organizationId}`}>
+                    {props.lang === "es" ? "Editar enlace de materiales" : "Edit materials link"}
+                  </label>
+                  <input
+                    id={`phase3-${output.outputKey}-link-${props.organizationId}`}
+                    name={output.outputKey}
+                    type="url"
+                    defaultValue={cardMaterialsUrl}
+                    placeholder="https://drive.google.com/drive/folders/..."
+                  />
+                  <button type="submit" className="phase-output-toggle">
+                    {props.lang === "es" ? "Guardar enlace" : "Save link"}
+                  </button>
+                </form>
+              ) : null}
+
+              {/* Facilitation card and all others: standard toggle */}
               {canManuallyToggleOutputs ? (
                 <form
                   action={async () => {

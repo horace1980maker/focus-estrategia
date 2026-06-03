@@ -15,6 +15,7 @@ import {
   updatePhaseOutputStatus,
 } from "@/lib/phases";
 import { getSession } from "@/lib/session";
+import { requireOrganizationScope } from "@/lib/access-guards";
 
 type ActionResult =
   | { success: true; message: string; data?: Record<string, unknown> }
@@ -331,26 +332,17 @@ export async function setPhaseOutputCompletionAction(input: {
 }): Promise<ActionResult> {
   try {
     const session = await getSession();
-    if (!hasPermission(session.role, "canEditOrgData")) {
-      await writeDeniedAccessEvent({
-        session,
-        organizationId: input.organizationId,
-        targetEntityType: "phase_output",
-        targetEntityId: `${input.phaseNumber}:${input.outputKey}`,
+    await requireOrganizationScope({
+      session,
+      organizationId: input.organizationId,
+      action: "write",
+      allowFacilitatorWrite: input.phaseNumber === 3,
+      context: {
         reason: "phase_output_update_forbidden",
-      });
-      return { success: false, error: "Solo administradores de ONG pueden editar salidas de fase." };
-    }
-    if (session.organizationId !== input.organizationId) {
-      await writeDeniedAccessEvent({
-        session,
-        organizationId: input.organizationId,
         targetEntityType: "phase_output",
         targetEntityId: `${input.phaseNumber}:${input.outputKey}`,
-        reason: "phase_output_update_scope_forbidden",
-      });
-      return { success: false, error: "No tienes acceso a esta organizacion." };
-    }
+      },
+    });
 
     const result = await updatePhaseOutputStatus({
       organizationId: input.organizationId,

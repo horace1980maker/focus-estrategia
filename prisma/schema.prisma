@@ -23,6 +23,7 @@ model Organization {
   users              User[]
   phaseTracker       PhaseTracker?
   onboardingWorkspace OnboardingWorkspace?
+  frameworkWorkspace  FrameworkWorkspace?
   onboardingEvidence OnboardingEvidence[]
   onboardingParticipants OnboardingParticipant[]
   facilitatorGuidance FacilitatorGuidance?
@@ -84,6 +85,7 @@ model User {
   validationFeedbackResponses ValidationFeedbackResponse[] @relation("ValidationResponseSubmittedBy")
   validationSignoffs ValidationSignoff[] @relation("ValidationSignoffSignedBy")
   updatedOnboardingWorkspaces OnboardingWorkspace[] @relation("OnboardingWorkspaceUpdatedBy")
+  updatedFrameworkWorkspaces FrameworkWorkspace[] @relation("FrameworkWorkspaceUpdatedBy")
   onboardingParticipants OnboardingParticipant[] @relation("OnboardingParticipantLinkedUser")
   uploadedOnboardingEvidence OnboardingEvidence[] @relation("OnboardingEvidenceUploadedBy")
   updatedFacilitatorGuidance FacilitatorGuidance[] @relation("FacilitatorGuidanceUpdatedBy")
@@ -625,6 +627,24 @@ model OnboardingWorkspace {
   organization Organization @relation(fields: [organizationId], references: [id])
   updatedBy    User?        @relation("OnboardingWorkspaceUpdatedBy", fields: [updatedById], references: [id])
   participants OnboardingParticipant[]
+
+  @@index([organizationId, updatedAt])
+}
+
+// —— Phase 3 Framework Workspace ———————————————————————————————————————————
+model FrameworkWorkspace {
+  id                 String   @id @default(cuid())
+  organizationId     String   @unique
+  materialsFolderUrl String?
+  materialsFolderUrl2 String?
+  materialsFolderUrl3 String?
+  materialsFolderUrl4 String?
+  updatedById        String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  updatedBy    User?        @relation("FrameworkWorkspaceUpdatedBy", fields: [updatedById], references: [id])
 
   @@index([organizationId, updatedAt])
 }

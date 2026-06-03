@@ -54,12 +54,14 @@ function hasRequiredDelegates(client: PrismaClient | undefined): client is Prism
     facilitatorGuidance?: unknown;
     facilitatorGuidanceTask?: unknown;
     platformSetting?: unknown;
+    frameworkWorkspace?: unknown;
   };
   return (
     typeof candidate.organization !== "undefined" &&
     typeof candidate.facilitatorGuidance !== "undefined" &&
     typeof candidate.facilitatorGuidanceTask !== "undefined" &&
-    typeof candidate.platformSetting !== "undefined"
+    typeof candidate.platformSetting !== "undefined" &&
+    typeof candidate.frameworkWorkspace !== "undefined"
   );
 }
 

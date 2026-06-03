@@ -40,8 +40,8 @@ export default async function LandingPage({
       title: dict.phases.phase3,
       desc:
         lang === "es"
-          ? "Teoría de Cambio, prioridades y objetivos estratégicos"
-          : "Theory of Change, priorities, and strategic objectives",
+          ? "Materiales de referencia y sesión de facilitación"
+          : "Reference materials and facilitation session",
     },
     {
       num: 4,
