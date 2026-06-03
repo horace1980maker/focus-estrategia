@@ -45,3 +45,13 @@ export async function saveFrameworkWorkspaceAction(
     };
   }
 }
+
+export async function saveFrameworkWorkspaceOrThrowAction(
+  organizationId: string,
+  formData: FormData,
+): Promise<void> {
+  const result = await saveFrameworkWorkspaceAction(organizationId, formData);
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}

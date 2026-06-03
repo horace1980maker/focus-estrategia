@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { requestReviewAction } from "@/app/actions/phases";
-import { approvePhaseAction, rejectPhaseAction } from "@/app/actions/phases";
-import { setPhaseOutputCompletionAction } from "@/app/actions/phases";
-import { saveOnboardingWorkspaceAction } from "@/app/actions/onboarding";
-import { saveFrameworkWorkspaceAction } from "@/app/actions/framework";
+import {
+  requestReviewFormAction,
+  setPhaseOutputCompletionOrThrowAction,
+  approvePhaseFormAction,
+  rejectPhaseFormAction,
+} from "@/app/actions/phases";
+import { saveOnboardingWorkspaceOrThrowAction } from "@/app/actions/onboarding";
+import { saveFrameworkWorkspaceOrThrowAction } from "@/app/actions/framework";
 import type { Locale } from "@/i18n/config";
 import { getPhaseDescription } from "@/lib/phase-metadata";
 import { prisma } from "@/lib/prisma";
@@ -115,6 +118,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
   const materialsFolderUrl3 = frameworkWorkspace?.materialsFolderUrl3?.trim() || "";
   const materialsFolderUrl4 = frameworkWorkspace?.materialsFolderUrl4?.trim() || "";
 
+
   return (
     <section className="phase-workspace-shell">
       <header className="phase-workspace-header">
@@ -223,13 +227,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
 
               {output.outputKey === "memorandum-of-understanding" && canEditPhase1Links ? (
                 <form
-                  action={async (formData: FormData) => {
-                    "use server";
-                    const result = await saveOnboardingWorkspaceAction(props.organizationId, formData);
-                    if (!result.success) {
-                      throw new Error(result.error);
-                    }
-                  }}
+                  action={saveOnboardingWorkspaceOrThrowAction.bind(null, props.organizationId)}
                   className="phase-review-form"
                 >
                   <label htmlFor={`phase1-mou-link-${props.organizationId}`}>
@@ -290,13 +288,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
 
               {output.outputKey === "organization-documentation" && canEditPhase1Links ? (
                 <form
-                  action={async (formData: FormData) => {
-                    "use server";
-                    const result = await saveOnboardingWorkspaceAction(props.organizationId, formData);
-                    if (!result.success) {
-                      throw new Error(result.error);
-                    }
-                  }}
+                  action={saveOnboardingWorkspaceOrThrowAction.bind(null, props.organizationId)}
                   className="phase-review-form"
                 >
                   <label htmlFor={`phase1-folder-link-${props.organizationId}`}>
@@ -350,13 +342,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
 
               {isMaterialsCard && canEditPhase3Links ? (
                 <form
-                  action={async (formData: FormData) => {
-                    "use server";
-                    const result = await saveFrameworkWorkspaceAction(props.organizationId, formData);
-                    if (!result.success) {
-                      throw new Error(result.error);
-                    }
-                  }}
+                  action={saveFrameworkWorkspaceOrThrowAction.bind(null, props.organizationId)}
                   className="phase-review-form"
                 >
                   <label htmlFor={`phase3-${output.outputKey}-link-${props.organizationId}`}>
@@ -378,15 +364,13 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
               {/* Facilitation card and all others: standard toggle */}
               {canManuallyToggleOutputs ? (
                 <form
-                  action={async () => {
-                    "use server";
-                    await setPhaseOutputCompletionAction({
-                      organizationId: props.organizationId,
-                      phaseNumber: props.phaseNumber,
-                      outputKey: output.outputKey,
-                      isCompleted: nextCompletedState,
-                    });
-                  }}
+                  action={setPhaseOutputCompletionOrThrowAction.bind(
+                    null,
+                    props.organizationId,
+                    props.phaseNumber,
+                    output.outputKey,
+                    nextCompletedState,
+                  )}
                 >
                   <button type="submit" className="phase-output-toggle">
                     {buttonText}
@@ -442,10 +426,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
 
         {canRequestReview ? (
           <form
-            action={async () => {
-              "use server";
-              await requestReviewAction(props.organizationId, props.phaseNumber);
-            }}
+            action={requestReviewFormAction.bind(null, props.organizationId, props.phaseNumber)}
             className="phase-review-form"
           >
             <button
@@ -533,15 +514,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
         {canApproveReview ? (
           <div className="phase-facilitator-actions">
             <form
-              action={async (formData: FormData) => {
-                "use server";
-                const feedback = String(formData.get("approvalFeedback") ?? "").trim();
-                await approvePhaseAction(
-                  props.organizationId,
-                  props.phaseNumber,
-                  feedback.length > 0 ? feedback : undefined,
-                );
-              }}
+              action={approvePhaseFormAction.bind(null, props.organizationId, props.phaseNumber)}
               className="phase-review-form"
             >
               <label htmlFor={`approve-feedback-${props.phaseNumber}`}>
@@ -565,15 +538,7 @@ export default async function PhaseWorkspaceShell(props: PhaseWorkspaceShellProp
             </form>
 
             <form
-              action={async (formData: FormData) => {
-                "use server";
-                const feedback = String(formData.get("feedback") ?? "");
-                await rejectPhaseAction(
-                  props.organizationId,
-                  props.phaseNumber,
-                  feedback,
-                );
-              }}
+              action={rejectPhaseFormAction.bind(null, props.organizationId, props.phaseNumber)}
               className="phase-review-form"
             >
               <label htmlFor={`reject-feedback-${props.phaseNumber}`}>

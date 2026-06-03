@@ -60,3 +60,13 @@ export async function deleteOnboardingEvidenceAction(
     };
   }
 }
+
+export async function saveOnboardingWorkspaceOrThrowAction(
+  organizationId: string,
+  formData: FormData,
+): Promise<void> {
+  const result = await saveOnboardingWorkspaceAction(organizationId, formData);
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}

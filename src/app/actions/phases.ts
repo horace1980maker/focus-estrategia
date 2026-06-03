@@ -379,3 +379,62 @@ export async function setPhaseOutputCompletionAction(input: {
     return { success: false, error: mapped.error, data: mapped.data };
   }
 }
+
+export async function setPhaseOutputCompletionOrThrowAction(
+  organizationId: string,
+  phaseNumber: number,
+  outputKey: string,
+  isCompleted: boolean,
+): Promise<void> {
+  const result = await setPhaseOutputCompletionAction({
+    organizationId,
+    phaseNumber,
+    outputKey,
+    isCompleted,
+  });
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}
+
+export async function approvePhaseFormAction(
+  organizationId: string,
+  phaseNumber: number,
+  formData: FormData,
+): Promise<void> {
+  const feedback = String(formData.get("approvalFeedback") ?? "").trim();
+  const result = await approvePhaseAction(
+    organizationId,
+    phaseNumber,
+    feedback.length > 0 ? feedback : undefined,
+  );
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}
+
+export async function rejectPhaseFormAction(
+  organizationId: string,
+  phaseNumber: number,
+  formData: FormData,
+): Promise<void> {
+  const feedback = String(formData.get("feedback") ?? "");
+  const result = await rejectPhaseAction(
+    organizationId,
+    phaseNumber,
+    feedback,
+  );
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}
+
+export async function requestReviewFormAction(
+  organizationId: string,
+  phaseNumber: number,
+): Promise<void> {
+  const result = await requestReviewAction(organizationId, phaseNumber);
+  if (!result.success) {
+    throw new Error(result.error);
+  }
+}
